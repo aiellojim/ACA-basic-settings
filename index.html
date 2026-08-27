@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aiello ACA Basic Settings</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ava-primary:#0f766e; --ava-primary-dark:#0b5c56; --ava-accent:#14b8a6;
+    --ava-bg:#f1f5f9; --ava-border:#e2e8f0; --ava-text:#1e293b; --ava-text-light:#64748b;
+    --ava-sidebar-bg:#0f172a; --ava-sidebar-text:#cbd5e1; --ava-sidebar-active:#14b8a6;
+    --ava-danger:#dc2626; --fs:13px; --ctrl-h:38px; --ctrl-h-sm:32px;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--ava-bg);color:var(--ava-text);font-size:var(--fs);}
+  .ava-header{height:64px;background:#fff;border-bottom:1px solid var(--ava-border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;position:sticky;top:0;z-index:50;gap:12px;}
+  .ava-header .header-left{display:flex;align-items:center;gap:10px;min-width:0;}
+  .ava-header .brand{display:flex;flex-direction:column;line-height:1.3;min-width:0;}
+  .ava-header .brand strong{font-size:15px;color:var(--ava-primary-dark);}
+  .ava-header .brand-sub{font-size:13px;color:var(--ava-text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ava-header .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .ava-header .save-indicator{font-size:13px;color:var(--ava-accent);white-space:nowrap;}
+  .ava-header .icon-btn{border:none;background:transparent;font-size:20px;cursor:pointer;padding:4px 8px;color:var(--ava-text);}
+  .ava-header select#uiLangSelect{-webkit-appearance:none;-moz-appearance:none;appearance:none;border:1px solid var(--ava-border);background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="%23555" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 7.5l4.5 4.5 4.5-4.5"/></svg>') no-repeat right 10px center/12px;background-color:#fff;color:var(--ava-text);padding:0 26px 0 10px;height:38px;line-height:36px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;box-sizing:border-box;vertical-align:middle;margin:0;}
+  .btn{border:1px solid var(--ava-border);background:#fff;color:var(--ava-text);padding:0 14px;height:var(--ctrl-h);border-radius:8px;font-size:var(--fs);cursor:pointer;white-space:nowrap;font-family:inherit;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin:0;gap:6px;}
+  .btn:hover{border-color:var(--ava-accent);color:var(--ava-primary-dark);background:#f8fafc;}
+  .btn.primary{background:var(--ava-primary);color:#fff;border-color:var(--ava-primary);}
+  .btn.primary:hover{background:var(--ava-primary-dark);color:#fff;}
+  .btn.small{padding:0 11px;height:var(--ctrl-h-sm);font-size:var(--fs);}
+  .mobile-only{display:none;}
+  .ava-layout{display:flex;min-height:calc(100vh - 64px);align-items:stretch;}
+  .ava-sidebar{width:250px;flex-shrink:0;background:var(--ava-sidebar-bg);color:var(--ava-sidebar-text);overflow-y:auto;padding:10px 0;position:sticky;top:64px;height:calc(100vh - 64px);}
+  .ava-sidebar .nav-group-label{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;padding:14px 18px 6px;}
+  .ava-sidebar button.nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;color:var(--ava-sidebar-text);padding:11px 18px;font-size:13px;cursor:pointer;border-left:3px solid transparent;font-family:inherit;line-height:1.5;}
+  .ava-sidebar button.nav-item .num{width:20px;height:20px;border-radius:50%;background:#1e293b;color:#94a3b8;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ava-sidebar button.nav-item:hover{background:#1e293b;}
+  .ava-sidebar button.nav-item.active{background:#132a27;border-left-color:var(--ava-sidebar-active);color:#fff;}
+  .ava-sidebar button.nav-item.active .num{background:var(--ava-accent);color:#04201c;}
+  .ava-content{flex:1;min-width:0;padding:26px 30px 80px;}
+  .panel{display:none;max-width:980px;margin:0 auto;}
+  .panel.active{display:block;animation:avafade .15s ease;}
+  @keyframes avafade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .panel h1{font-size:20px;margin:0 0 6px;color:var(--ava-primary-dark);line-height:1.4;font-weight:600;}
+  .panel .panel-sub{color:var(--ava-text-light);font-size:var(--fs);margin-bottom:20px;line-height:1.6;}
+  .card{background:#fff;border:1px solid var(--ava-border);border-radius:10px;padding:20px;margin-bottom:18px;}
+  .card h3{margin:0 0 14px;font-size:var(--fs);font-weight:700;color:var(--ava-primary-dark);border-bottom:1px solid var(--ava-border);padding-bottom:10px;line-height:1.5;}
+  .note{background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:13px 15px;font-size:var(--fs);color:#0f5c53;margin-bottom:16px;line-height:1.65;}
+  table.rep{width:100%;border-collapse:collapse;font-size:var(--fs);margin-top:6px;}
+  table.rep th{text-align:left;background:#f8fafc;padding:9px 8px;border-bottom:2px solid var(--ava-border);font-size:var(--fs);color:var(--ava-text-light);white-space:nowrap;font-weight:700;line-height:1.5;}
+  table.rep td{padding:7px;border-bottom:1px solid var(--ava-border);vertical-align:middle;}
+  table.rep input,table.rep select{border:1px solid var(--ava-border);border-radius:6px;padding:0 8px;height:var(--ctrl-h-sm);box-sizing:border-box;font-size:var(--fs);width:100%;min-width:90px;font-family:inherit;}
+  table.rep input:disabled,table.rep select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;}
+  table.rep .rm{background:none;border:1px solid transparent;color:var(--ava-danger);cursor:pointer;font-size:16px;height:var(--ctrl-h-sm);width:var(--ctrl-h-sm);display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:6px;}
+  table.rep .rm svg{display:block;}
+  table.rep .rm:hover{background:#fef2f2;border-color:#fecaca;}
+  table.rep td.rm-cell{padding-left:12px;text-align:center;width:36px;}
+  .addrow{margin-top:10px;gap:6px;}
+  .addrow-icon{font-size:16px;line-height:1;font-weight:700;}
+  .reftable{width:100%;border-collapse:collapse;font-size:var(--fs);margin-top:4px;overflow:hidden;border-radius:8px;}
+  .reftable th{background:var(--ava-primary);color:#fff;padding:10px 9px;text-align:center;font-weight:700;line-height:1.5;}
+  .reftable td{padding:9px;text-align:center;border-bottom:1px solid var(--ava-border);line-height:1.5;}
+  .reftable tr:nth-child(even) td{background:#f8fafc;}
+  .reftable td.levelcol{font-weight:700;color:var(--ava-primary-dark);background:#f0fdfa!important;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;}
+  .modal-box{background:#fff;border-radius:14px;padding:24px;}
+  @media(max-width:860px){
+    .mobile-only{display:inline-block;}
+    .ava-sidebar{position:fixed;left:-250px;top:64px;height:calc(100vh - 64px);transition:left .2s;z-index:60;box-shadow:2px 0 12px rgba(0,0,0,.2);}
+    .ava-sidebar.open{left:0;}
+    .ava-content{padding:18px;}
+    .ava-header .brand-sub{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="ava-header">
+  <div class="header-left">
+    <button id="menuToggle" class="icon-btn mobile-only" aria-label="menu">&#9776;</button>
+    <div class="brand">
+      <strong>Aiello ACA Basic Settings</strong>
+      <span class="brand-sub" id="brandSub">Pre-setup</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <select id="uiLangSelect" aria-label="Language">
+      <option value="en">🌐 English</option>
+      <option value="zh">🌐 中文</option>
+      <option value="ja">🌐 日本語</option>
+    </select>
+    <button class="btn" id="exportExcelBtn">Export Excel</button>
+    <button class="btn primary" id="submitBtn" onclick="openSubmitConfirmModal()">Submit / Update</button>
+    <span class="save-indicator" id="headerSaveIndicator">Saved</span>
+  </div>
+</header>
+
+<div class="ava-layout">
+  <nav class="ava-sidebar" id="avaSidebar"></nav>
+  <main class="ava-content" id="avaContent">
+
+      <div id="panel-departments" class="panel">
+        <h1 id="tDeptTitle">Transfer Departments</h1>
+        <p class="panel-sub" id="tDeptDesc">Define each department's extension and call-log notification email for this organization. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab.</p>
+        <div class="card">
+          <h3 id="tDeptCardTitle">Departments</h3>
+          <div id="tbl-departments"></div>
+        </div>
+      </div>
+
+      <div id="panel-scenarios" class="panel">
+        <h1 id="tScenTitle">Transfer Scenarios</h1>
+        <p class="panel-sub" id="tScenDesc">21 preset scenarios are pre-filled below — you can edit, delete, or add your own.</p>
+        <div class="card">
+          <h3 id="tScenCardTitle">Scenarios</h3>
+          <div id="tbl-scenarios"></div>
+        </div>
+      </div>
+
+      <div id="panel-welcome" class="panel">
+        <h1 id="tWelcomeTitle">Welcome Message</h1>
+        <p class="panel-sub" id="tWelcomeDesc">Shown as the AI agent's opening greeting for this organization.</p>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--ava-border);padding-bottom:10px;margin-bottom:14px;">
+            <h3 style="margin:0;border-bottom:none;padding-bottom:0;" id="tWelcomeCardTitle">Welcome Message</h3>
+            <button type="button" class="btn small" id="restoreWelcomeBtn">Restore Default</button>
+          </div>
+          <textarea id="welcomeTextarea" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--ava-border);border-radius:8px;padding:10px;font-size:var(--fs);font-family:inherit;"></textarea>
+        </div>
+      </div>
+
+      <div id="panel-kms" class="panel">
+        <h1 id="tKmsTitle">KMS Permissions</h1>
+        <p class="panel-sub" id="tKmsDesc">Knowledge Management System access. Shares the same account as Aiello TMS Portal.</p>
+        <div class="note" id="kmsSharedNote" style="display:none;"></div>
+        <div class="card">
+          <h3 id="tKmsRefTitle">KMS Level Reference</h3>
+          <div id="kmsRefTable"></div>
+        </div>
+        <div class="card">
+          <h3 id="tKmsUserListTitle">User List</h3>
+          <div class="note" id="kmsUserNote"></div>
+          <div id="tbl-kms"></div>
+        </div>
+      </div>
+
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL = 'https://yqoingcpcryrcpnhkjzu.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fiGnl8HwstdP81Eqls6JnQ_YWqmns-5';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function getProjectId(){
+  const params = new URLSearchParams(location.search);
+  const fromQuery = params.get('p');
+  if (fromQuery) return fromQuery;
+  const m = location.pathname.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+  return m ? m[0] : null;
+}
+const PROJECT_ID = getProjectId();
+const uid = () => crypto.randomUUID();
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+const RM_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+const HANDLING_OPTIONS = [
+  { v:'transfer_human', en:'Transfer to human', zh:'轉接人工', ja:'担当者に転送' },
+  { v:'auto_ticket', en:'Auto-create ticket', zh:'後台自動開單', ja:'バックエンドで自動起票' },
+];
+function handlingLabel(v, lang){ const o = HANDLING_OPTIONS.find(x=>x.v===v); return o ? (o[lang]||o.en) : v; }
+
+const KMS_LEVELS = [
+  { v:'Publish', en:'Publish', zh:'發佈', ja:'公開' },
+  { v:'Edit', en:'Edit', zh:'編輯', ja:'編集' },
+];
+// Same reference content as AVA basic settings' KMS Level Reference table (Jim, 2026-08-27:
+// "直接搬 basic settings 的 KMS 權限設定參考表...過來（樣式和內容）").
+const KMS_PERMISSION_DETAIL = [
+  { key:'Publish', en:'Publish', zh:'發佈', ja:'公開',
+    desc:{ en:'Can publish updated knowledge cards and change the content of the live database.', zh:'可以發布更新後的知識卡，並變更正式資料庫內容。', ja:'更新されたナレッジカードを公開し、本番データベースの内容を変更できます。' } },
+  { key:'Edit', en:'Edit', zh:'編輯', ja:'編集',
+    desc:{ en:'Can edit knowledge card content, but cannot publish changes to the live database.', zh:'可以編輯知識卡內容，但無法將變更發布至正式資料庫。', ja:'ナレッジカードの内容を編集できますが、変更を本番データベースに公開することはできません。' } },
+];
+
+// 21 rows extracted from the UAT Portal PDF (source doc labels it "22 組預設場景" but only 21
+// were readable in the export - if Jim confirms a 22nd preset, add it here as one more row).
+// Plain strings, not {en,zh,ja} - Jim confirmed (2026-08-27) the org only fills in one version;
+// only the surrounding UI chrome (labels/buttons) needs to be trilingual, not this content.
+const DEFAULT_DEPARTMENTS = ['前台','總機','餐廳','房務部','訂房組'];
+const DEFAULT_SCENARIOS = [
+  '未定義需求','備品配送','維修保養','客房清潔','洗衣服務','加床','延後退房','行李寄取','喚醒服務',
+  '帳務查詢','會員權益','交通服務','訂房','餐廳訂位','客房餐飲','接送預約','活動預約','SPA 預約',
+  '其他預約','客訴','安全 / 緊急事件',
+];
+
+function defaultWelcome(orgName, lang){
+  const name = orgName || '';
+  const templates = {
+    en: 'Hello, this is ' + name + ', your AI assistant. How can I help you today?',
+    zh: '您好，這裡是' + name + '，我是您的AI客服。有什麼事情我能為您效勞嗎？',
+    ja: 'こんにちは、' + name + 'です。AIアシスタントとしてご用件を承ります。ご用件は何でしょうか？',
+  };
+  return templates[lang] || templates.zh;
+}
+
+let uiLang = 'zh';
+function defaultState(){
+  return {
+    departments: DEFAULT_DEPARTMENTS.map(name => ({ _id:uid(), name, ext:'', emails:'' })),
+    // dept is free-typed text (not a foreign key) - it just happens to auto-fill from a matching
+    // department name if one exists (see matchedDept()). ext is this row's own independent value,
+    // only actually used/editable when dept text doesn't match a real department (Jim, 2026-08-27).
+    scenarios: DEFAULT_SCENARIOS.map(name => ({ _id:uid(), name, handling:'transfer_human', dept:'', ext:'', email:'' })),
+    // Pre-filled with the live default template (not blank) so the Welcome tab never shows an
+    // empty textarea before Supabase resolves - see welcomeIsDefault below (Jim, 2026-08-27:
+    // "進入頁面前就預填預設內容...還沒接上 db 的現在預填就好").
+    welcome: defaultWelcome('', uiLang),
+    kmsUsers: [],
+  };
+}
+let state = defaultState();
+let lastSynced = null;
+let PROJECT_NAME = null;
+let PRODUCTS = [];
+function hasAva(){ return PRODUCTS.includes('AVA'); }
+function snapshot(o){ return JSON.parse(JSON.stringify(o)); }
+
+// True as long as state.welcome is still the auto-generated template, not something the org
+// actually typed or a real saved value loaded from the DB. While true, switching the header UI
+// language regenerates the welcome text in the new language (applyUiLanguage()); the moment the
+// textarea is edited, or a real saved value loads, this flips to false and the text stops
+// following language switches. "Restore Default" flips it back to true.
+let welcomeIsDefault = true;
+let activePanel = 'departments';
+let isHydrating = false;
+
+const UI_STRINGS = {
+  nav_departments:{ en:'Transfer Departments', zh:'轉接部門設定', ja:'転送部署設定' },
+  nav_scenarios:{ en:'Transfer Scenarios', zh:'轉接情境設定', ja:'転送シナリオ設定' },
+  nav_welcome:{ en:'Welcome Message', zh:'歡迎詞', ja:'ウェルカムメッセージ' },
+  nav_kms:{ en:'KMS Permissions', zh:'KMS 權限設定', ja:'KMS権限設定' },
+  dept_title:{ en:'Transfer Departments', zh:'指定轉接部門', ja:'転送部署の指定' },
+  dept_desc:{ en:"Define each department's extension and call-log notification email for this organization. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab.", zh:'定義此組織各部門的分機與通話記錄 Email，填寫後「轉接情境設定」分頁的對應欄位可直接下拉選取。', ja:'この組織の各部署の内線と通話記録の通知先メールを設定します。入力すると、「転送シナリオ設定」タブの該当項目でドロップダウンから選択できます。' },
+  dept_card_title:{ en:'Departments', zh:'部門', ja:'部署' },
+  col_dept_name:{ en:'Department Name', zh:'部門名稱', ja:'部署名' },
+  col_ext:{ en:'Extension', zh:'分機', ja:'内線' },
+  col_notify_email:{ en:'Notification Email', zh:'發送通話記錄 Email', ja:'通知先メール' },
+  placeholder_multi_email:{ en:'Multiple emails separated by ;', zh:'多筆 Email 請用半形分號 (;) 分隔', ja:'複数の場合はセミコロン(;)で区切ってください' },
+  add_dept_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  scen_title:{ en:'Transfer Scenarios / Extensions', zh:'轉接場景 / 分機設定', ja:'転送シナリオ / 内線設定' },
+  scen_desc:{ en:'21 preset scenarios are pre-filled below — you can edit, delete, or add your own.', zh:'21 組預設場景已預先填入，您可以編輯、刪除或新增自訂項目。', ja:'21件のプリセットシナリオが入力済みです。編集・削除・追加が可能です。' },
+  scen_card_title:{ en:'Scenarios', zh:'場景', ja:'シナリオ' },
+  col_scenario:{ en:'Scenario', zh:'場景', ja:'シナリオ' },
+  col_handling:{ en:'Handling', zh:'處理方式', ja:'処理方法' },
+  col_department:{ en:'Department', zh:'部門', ja:'部署' },
+  col_email:{ en:'Email', zh:'Email', ja:'メール' },
+  add_scen_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  welcome_title:{ en:'Welcome Message', zh:'歡迎詞', ja:'ウェルカムメッセージ' },
+  welcome_desc:{ en:"Shown as the AI agent's opening greeting for this organization.", zh:'作為 AI 客服接聽時的開場歡迎詞。', ja:'AIエージェントの応対開始時の挨拶として表示されます。' },
+  restore_default_btn:{ en:'Restore Default', zh:'回復預設', ja:'デフォルトに戻す' },
+  kms_title:{ en:'KMS Permissions', zh:'權限設定（KMS）', ja:'KMS権限設定' },
+  kms_desc:{ en:'Knowledge Management System access. Shares the same account as Aiello TMS Portal.', zh:'知識管理系統存取權限，與 Aiello TMS Portal 共用同一組帳號。', ja:'ナレッジ管理システムのアクセス権限です。Aiello TMS Portalと同じアカウントを共有します。' },
+  kms_shared_note:{ en:'This project also has AVA — this list is managed from AVA Basic Settings and shown here read-only.', zh:'此專案同時有 AVA 產品，此名單以 AVA Basic Settings 為主要編輯端，這裡僅供顯示。', ja:'このプロジェクトはAVAも利用しているため、このリストはAVA Basic Settings側で編集し、ここでは表示のみとなります。' },
+  kms_ref_title:{ en:'KMS Level Reference', zh:'KMS 權限等級參考', ja:'KMS権限レベル早見表' },
+  kms_ref_level:{ en:'KMS Level', zh:'KMS 權限', ja:'KMS権限' },
+  kms_ref_permission:{ en:'Permission', zh:'權限說明', ja:'権限内容' },
+  kms_userlist_title:{ en:'User List', zh:'使用者名單', ja:'ユーザー一覧' },
+  kms_user_note:{ en:'Username must use English letters and numbers only. If a username is already taken, a number will be appended automatically. After sign-up, an email with the portal URL, ID and default password will be sent, and the user must change the password at first login.', zh:'使用者帳號限英文及數字；若帳號已被使用，將自動於帳號後加數字。申請完成後將寄送含後台 URL、帳號、預設密碼之郵件，第一次登入需變更密碼。', ja:'ユーザー名は英数字のみ使用できます。既に使用されている場合は自動的に数字が付加されます。登録完了後、管理画面URL・ID・初期パスワードを記載したメールが送信され、初回ログイン時にパスワードの変更が必要です。' },
+  col_kms_email:{ en:'Email', zh:'電子郵件', ja:'メールアドレス' },
+  col_kms_userid:{ en:'Username', zh:'帳號', ja:'ユーザー名' },
+  col_kms_level:{ en:'KMS Level', zh:'KMS 權限等級', ja:'KMS権限レベル' },
+  add_kms_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  header_submit_btn:{ en:'Submit / Update', zh:'提交 / 更新', ja:'送信・更新' },
+  export_excel_btn:{ en:'Export Excel', zh:'匯出 Excel', ja:'Excelを出力' },
+  banner_no_project:{ en:'No project link found in this URL - working in local-only mode, nothing will sync to the cloud.', zh:'此網址未帶有效的專案連結，目前僅為本機模式，不會同步至雲端。', ja:'このURLに有効なプロジェクトリンクが見つかりません。現在はローカルモードで動作しており、クラウドには同期されません。' },
+  banner_hotel_not_found:{ en:'Hotel ID not found for this link - you can still fill out the form, but it will not be saved to the cloud until this is resolved with your Aiello contact.', zh:'找不到此連結對應的飯店專案，仍可繼續填寫，但在確認前不會同步至雲端，請與 Aiello 聯繫確認。', ja:'このリンクに対応するホテルプロジェクトが見つかりません。引き続きフォームにご記入いただけますが、Aielloの担当者に確認いただくまではクラウドに保存されません。' },
+  banner_connection_error:{ en:"Could not connect to the server - working offline for now, your edits won't sync until the connection is restored.", zh:'無法連線到伺服器，暫時離線作業，連線恢復前的編輯不會同步。', ja:'サーバーに接続できませんでした。現在はオフラインで作業しています。接続が回復するまで編集内容は同期されません。' },
+  submit_confirm_line1:{ en:'Please confirm the form is complete.', zh:'請確認表單內容已填寫完成，', ja:'フォームの内容をご確認ください。' },
+  submit_confirm_line2:{ en:'Aiello will be notified by email.', zh:'提交後將以 email 通知 Aiello 相關人員。', ja:'送信後、Aielloの担当者にメール通知します。' },
+  submit_cancel:{ en:'Cancel', zh:'取消', ja:'キャンセル' },
+  submit_submit:{ en:'Submit', zh:'提交', ja:'送信' },
+  submit_submitting:{ en:'Submitting…', zh:'提交中…', ja:'送信中…' },
+  submit_done:{ en:'Submitted. Thank you!', zh:'已提交，感謝您的填寫！', ja:'送信されました。ありがとうございます！' },
+  submit_ok:{ en:'OK', zh:'好的', ja:'OK' },
+};
+function t(key){ const e = UI_STRINGS[key]; return e ? (e[uiLang]||e.en) : key; }
+
+/* ---------------- Departments ---------------- */
+function renderDepartments(){
+  const rows = state.departments.map((r,i) => `
+    <tr data-ri="${i}">
+      <td><input type="text" data-k="name" value="${escapeAttr(r.name)}"></td>
+      <td><input type="text" data-k="ext" value="${escapeAttr(r.ext)}"></td>
+      <td><input type="text" data-k="emails" value="${escapeAttr(r.emails)}" placeholder="${escapeAttr(t('placeholder_multi_email'))}"></td>
+      <td class="rm-cell"><button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button></td>
+    </tr>`).join('');
+  const wrap = document.getElementById('tbl-departments');
+  wrap.innerHTML = `<table class="rep"><thead><tr>
+      <th>${t('col_dept_name')}</th><th>${t('col_ext')}</th><th>${t('col_notify_email')}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <button type="button" class="btn small addrow" id="dept-add-btn"><span class="addrow-icon">+</span><span>${t('add_dept_btn')}</span></button>`;
+  wrap.querySelector('#dept-add-btn').onclick = ()=>{
+    state.departments.push({_id:uid(), name:'', ext:'', emails:''});
+    renderDepartments(); scheduleAutosave();
+  };
+  wrap.querySelectorAll('input[data-k]').forEach(inp=>{
+    const ri = +inp.closest('tr').dataset.ri;
+    inp.oninput = ()=>{ state.departments[ri][inp.dataset.k] = inp.value; scheduleAutosave(); };
+  });
+  wrap.querySelectorAll('.rm').forEach(b=>{
+    b.onclick = ()=>{ state.departments.splice(+b.dataset.ri,1); renderDepartments(); renderScenarios(); scheduleAutosave(); };
+  });
+}
+
+/* ---------------- Scenarios ---------------- */
+// Department is free-typed text, not a hard foreign key (Jim, 2026-08-27: "部門欄位還是可以手填，
+// 只是可以選擇轉接部門設定裡已有的項目來自動帶入值；如果手填的話就不帶入任何值，且分機號也開放
+// 編輯"). A datalist element offers existing department names as suggestions. Only when the typed text
+// EXACTLY matches an existing department name is it considered "linked": the extension then always
+// mirrors that department's extension (locked) and the email gets suggested from it. Any other text
+// (including a department name that no longer exists) is just plain text - extension becomes its
+// own independently editable value again, nothing is forced.
+function matchedDept(deptText){
+  const name = (deptText||'').trim();
+  if(!name) return null;
+  return state.departments.find(d=>d.name===name) || null;
+}
+const DEPT_DATALIST_ID = 'aca-dept-datalist';
+function departmentDatalistHTML(){
+  return `<datalist id="${DEPT_DATALIST_ID}">` +
+    state.departments.map(d=>`<option value="${escapeAttr(d.name)}">`).join('') +
+    `</datalist>`;
+}
+function renderScenarios(){
+  const rows = state.scenarios.map((r,i) => {
+    const dis = r.handling==='auto_ticket';
+    const md = matchedDept(r.dept);
+    const extLocked = dis || !!md;
+    const extValue = md ? md.ext : r.ext;
+    return `
+    <tr data-ri="${i}">
+      <td><input type="text" data-k="name" value="${escapeAttr(r.name)}"></td>
+      <td><select data-k="handling">
+          ${HANDLING_OPTIONS.map(o=>`<option value="${o.v}" ${r.handling===o.v?'selected':''}>${o[uiLang]||o.en}</option>`).join('')}
+        </select></td>
+      <td><input type="text" data-k="dept" list="${DEPT_DATALIST_ID}" ${dis?'disabled':''} value="${escapeAttr(r.dept)}"></td>
+      <td><input type="text" data-k="ext" ${extLocked?'disabled':''} value="${escapeAttr(extValue)}"></td>
+      <td><input type="text" data-k="email" ${dis?'disabled':''} value="${escapeAttr(r.email)}"></td>
+      <td class="rm-cell"><button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button></td>
+    </tr>`;
+  }).join('');
+  const wrap = document.getElementById('tbl-scenarios');
+  wrap.innerHTML = `<table class="rep"><thead><tr>
+      <th>${t('col_scenario')}</th><th>${t('col_handling')}</th><th>${t('col_department')}</th><th>${t('col_ext')}</th><th>${t('col_email')}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <button type="button" class="btn small addrow" id="scen-add-btn"><span class="addrow-icon">+</span><span>${t('add_scen_btn')}</span></button>
+    ${departmentDatalistHTML()}`;
+  wrap.querySelector('#scen-add-btn').onclick = ()=>{
+    state.scenarios.push({_id:uid(), name:'', handling:'transfer_human', dept:'', ext:'', email:''});
+    renderScenarios(); scheduleAutosave();
+  };
+  wrap.querySelectorAll('input[data-k], select[data-k]').forEach(inp=>{
+    const ri = +inp.closest('tr').dataset.ri;
+    const k = inp.dataset.k;
+    if(k==='dept'){
+      // 'input' just persists the raw text as it's typed (no re-render, so the field never loses
+      // focus mid-keystroke). 'change' (fires on blur, Enter, or picking a datalist suggestion) is
+      // when a match actually gets resolved - that's when the email suggestion and the extension
+      // lock/unlock visually update.
+      inp.oninput = ()=>{ state.scenarios[ri].dept = inp.value; scheduleAutosave(); };
+      inp.onchange = ()=>{
+        const d = matchedDept(inp.value);
+        if(d) state.scenarios[ri].email = d.emails;
+        scheduleAutosave();
+        renderScenarios();
+      };
+      return;
+    }
+    const apply = ()=>{
+      state.scenarios[ri][k] = inp.value;
+      scheduleAutosave();
+      if(k==='handling') renderScenarios();
+    };
+    if(inp.tagName==='SELECT') inp.onchange = apply; else inp.oninput = apply;
+  });
+  wrap.querySelectorAll('.rm').forEach(b=>{
+    b.onclick = ()=>{ state.scenarios.splice(+b.dataset.ri,1); renderScenarios(); scheduleAutosave(); };
+  });
+}
+
+/* ---------------- Welcome ---------------- */
+function renderWelcome(){ document.getElementById('welcomeTextarea').value = state.welcome || ''; }
+
+/* ---------------- KMS (shared web_portal_users table, AVA is primary editor when present) ---------------- */
+function renderKmsRefTable(){
+  let html = `<table class="reftable"><thead><tr><th>${t('kms_ref_level')}</th><th>${t('kms_ref_permission')}</th></tr></thead><tbody>`;
+  KMS_PERMISSION_DETAIL.forEach(r=>{ html += `<tr><td class="levelcol">${r[uiLang]||r.en}</td><td>${r.desc[uiLang]||r.desc.en}</td></tr>`; });
+  html += '</tbody></table>';
+  document.getElementById('kmsRefTable').innerHTML = html;
+}
+function renderKms(){
+  renderKmsRefTable();
+  const editable = !hasAva();
+  const sharedNote = document.getElementById('kmsSharedNote');
+  sharedNote.style.display = editable ? 'none' : 'block';
+  sharedNote.textContent = t('kms_shared_note');
+  document.getElementById('kmsUserNote').textContent = t('kms_user_note');
+  const rows = state.kmsUsers.map((r,i) => `
+    <tr data-ri="${i}">
+      <td><input type="text" data-k="email" ${editable?'':'disabled'} value="${escapeAttr(r.email)}"></td>
+      <td><input type="text" data-k="username" ${editable?'':'disabled'} value="${escapeAttr(r.username)}"></td>
+      <td><select data-k="kmsLevel" ${editable?'':'disabled'}>
+          ${KMS_LEVELS.map(o=>`<option value="${o.v}" ${r.kmsLevel===o.v?'selected':''}>${o[uiLang]||o.en}</option>`).join('')}
+        </select></td>
+      <td class="rm-cell">${editable ? `<button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button>` : ''}</td>
+    </tr>`).join('');
+  const wrap = document.getElementById('tbl-kms');
+  wrap.innerHTML = `<table class="rep"><thead><tr>
+      <th>${t('col_kms_email')}</th><th>${t('col_kms_userid')}</th><th>${t('col_kms_level')}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>` +
+    (editable ? `<button type="button" class="btn small addrow" id="kms-add-btn"><span class="addrow-icon">+</span><span>${t('add_kms_btn')}</span></button>` : '');
+  if(editable){
+    wrap.querySelector('#kms-add-btn').onclick = ()=>{
+      state.kmsUsers.push({_id:uid(), email:'', username:'', kmsLevel:'Publish', portalLevel:'Level-1', isAdmin:false});
+      renderKms(); scheduleAutosave();
+    };
+    wrap.querySelectorAll('input[data-k], select[data-k]').forEach(inp=>{
+      const ri = +inp.closest('tr').dataset.ri;
+      const apply = ()=>{ state.kmsUsers[ri][inp.dataset.k] = inp.value; scheduleAutosave(); };
+      if(inp.tagName==='SELECT') inp.onchange = apply; else inp.oninput = apply;
+    });
+    wrap.querySelectorAll('.rm').forEach(b=>{
+      b.onclick = ()=>{ state.kmsUsers.splice(+b.dataset.ri,1); renderKms(); scheduleAutosave(); };
+    });
+  }
+}
+
+/* ---------------- Excel export (client-side snapshot, unrelated to autosave/Submit) ---------------- */
+document.getElementById('exportExcelBtn').onclick = function(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.departments.map(r=>({
+    Name:r.name, Extension:r.ext, 'Notification Email':r.emails,
+  }))), 'Departments');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.scenarios.map(r=>{
+    const md = matchedDept(r.dept);
+    return { Scenario:r.name, Handling: handlingLabel(r.handling,'en'), Department: r.dept, Extension: md ? md.ext : r.ext, Email:r.email };
+  })), 'Scenarios');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ 'Welcome Message': state.welcome }]), 'Welcome Message');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.kmsUsers.map(r=>({
+    Email:r.email, UserID:r.username, 'Permission Level':r.kmsLevel,
+  }))), 'KMS Users');
+  const filename = (PROJECT_NAME ? PROJECT_NAME.replace(/[^\w\-]+/g,'_') : 'ACA-basic-settings') + '_export.xlsx';
+  XLSX.writeFile(wb, filename);
+};
+
+/* ---------------- Sidebar / panel navigation ---------------- */
+const NAV_ITEMS = [
+  { id:'departments', labelKey:'nav_departments' },
+  { id:'scenarios', labelKey:'nav_scenarios' },
+  { id:'welcome', labelKey:'nav_welcome' },
+  { id:'kms', labelKey:'nav_kms' },
+];
+function renderSidebar(){
+  document.getElementById('avaSidebar').innerHTML = NAV_ITEMS.map((item,i)=>`
+    <button class="nav-item ${activePanel===item.id?'active':''}" onclick="switchPanel('${item.id}')">
+      <span class="num">${i+1}</span><span class="label">${t(item.labelKey)}</span>
+    </button>`).join('');
+}
+window.switchPanel = function(id){
+  activePanel = id;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('panel-'+id);
+  if(target) target.classList.add('active');
+  renderSidebar();
+  renderActivePanel();
+  document.getElementById('avaSidebar').classList.remove('open');
+};
+function renderActivePanel(){
+  if(activePanel==='departments') renderDepartments();
+  else if(activePanel==='scenarios') renderScenarios();
+  else if(activePanel==='welcome') renderWelcome();
+  else if(activePanel==='kms') renderKms();
+}
+
+function applyStaticText(){
+  document.getElementById('submitBtn').textContent = t('header_submit_btn');
+  document.getElementById('exportExcelBtn').textContent = t('export_excel_btn');
+  document.getElementById('tDeptTitle').textContent = t('dept_title');
+  document.getElementById('tDeptDesc').textContent = t('dept_desc');
+  document.getElementById('tDeptCardTitle').textContent = t('dept_card_title');
+  document.getElementById('tScenTitle').textContent = t('scen_title');
+  document.getElementById('tScenDesc').textContent = t('scen_desc');
+  document.getElementById('tScenCardTitle').textContent = t('scen_card_title');
+  document.getElementById('tWelcomeTitle').textContent = t('welcome_title');
+  document.getElementById('tWelcomeDesc').textContent = t('welcome_desc');
+  document.getElementById('tWelcomeCardTitle').textContent = t('welcome_title');
+  document.getElementById('restoreWelcomeBtn').textContent = t('restore_default_btn');
+  document.getElementById('tKmsTitle').textContent = t('kms_title');
+  document.getElementById('tKmsDesc').textContent = t('kms_desc');
+  document.getElementById('tKmsRefTitle').textContent = t('kms_ref_title');
+  document.getElementById('tKmsUserListTitle').textContent = t('kms_userlist_title');
+}
+function applyUiLanguage(){
+  if(welcomeIsDefault) state.welcome = defaultWelcome(PROJECT_NAME, uiLang);
+  applyStaticText();
+  renderSidebar();
+  renderActivePanel();
+  if(currentBannerKey) showBanner(currentBannerKey);
+  if(submitModalState) renderSubmitConfirmModal();
+}
+
+/* ---------------- Banner / save indicator ---------------- */
+let currentBannerKey = null;
+function showBanner(key){
+  currentBannerKey = key;
+  const el = document.getElementById('avaContent');
+  if(!el) return;
+  let banner = document.getElementById('noProjectBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'noProjectBanner';
+    banner.style.cssText = 'background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px 16px;border-radius:8px;font-size:13px;max-width:980px;margin:0 auto 14px;';
+    el.prepend(banner);
+  }
+  banner.textContent = t(key);
+}
+function formatClock24(d){ const p2=n=>String(n).padStart(2,'0'); return p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds()); }
+function markSaved(status){
+  const el = document.getElementById('headerSaveIndicator');
+  if(!el) return;
+  if(status==='ok'){ el.textContent='Saved '+formatClock24(new Date()); el.style.color='#14b8a6'; }
+  else if(status==='error'){ el.textContent='Sync error – retrying'; el.style.color='#dc2626'; }
+  else if(status==='not-found'){ el.textContent='Not linked to a project - not saving'; el.style.color='#f59e0b'; }
+  else { el.textContent='Local only (no project link)'; el.style.color='#f59e0b'; }
+}
+
+/* ---------------- Autosave / diff-based save ---------------- */
+function diffRepeater(prevArr, curArr, table, mapFn){
+  prevArr = prevArr||[]; curArr = curArr||[];
+  const prevById = {}; prevArr.forEach((r,i)=>{ prevById[r._id] = {row:r, idx:i}; });
+  const curIds = {}; curArr.forEach(r=>{ curIds[r._id]=true; });
+  const ops = [];
+  curArr.forEach((r,i)=>{
+    const prevEntry = prevById[r._id];
+    const payload = Object.assign({}, mapFn(r), {sort_order:i});
+    if(!prevEntry){
+      ops.push(sb.from(table).insert(Object.assign({}, payload, {id:r._id})).throwOnError());
+    } else {
+      const prevPayload = Object.assign({}, mapFn(prevEntry.row), {sort_order:prevEntry.idx});
+      const changed = {}; let anyChanged = false;
+      Object.keys(payload).forEach(k=>{ if(JSON.stringify(payload[k])!==JSON.stringify(prevPayload[k])){ changed[k]=payload[k]; anyChanged=true; } });
+      if(anyChanged) ops.push(sb.from(table).update(changed).eq('id', r._id).throwOnError());
+    }
+  });
+  prevArr.forEach(r=>{ if(!curIds[r._id]) ops.push(sb.from(table).delete().eq('id', r._id).throwOnError()); });
+  return ops;
+}
+
+let autosaveTimer = null;
+function scheduleAutosave(){
+  if(!PROJECT_ID || isHydrating) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(runSync, 250);
+}
+let syncInFlight = false, syncQueued = false;
+async function runSync(){
+  if(!PROJECT_ID){ markSaved('no-id'); return; }
+  if(syncInFlight){ syncQueued = true; return; }
+  syncInFlight = true;
+  try{
+    await saveToSupabase();
+    markSaved('ok');
+  }catch(e){
+    console.error('sync failed', e);
+    markSaved('error');
+  }
+  syncInFlight = false;
+  if(syncQueued){ syncQueued=false; runSync(); }
+}
+async function saveToSupabase(){
+  const prev = lastSynced || defaultState();
+  const cur = snapshot(state);
+  const ops = [];
+  ops.push(...diffRepeater(prev.departments, cur.departments, 'aca_transfer_departments', r=>({project_id:PROJECT_ID, name:r.name, ext:r.ext, emails:r.emails})));
+  ops.push(...diffRepeater(prev.scenarios, cur.scenarios, 'aca_transfer_scenarios', r=>{
+    const md = matchedDept(r.dept);
+    return {project_id:PROJECT_ID, name:r.name, handling:r.handling, department_name:r.dept||'', ext: md ? md.ext : r.ext, email:r.email};
+  }));
+  if(prev.welcome !== cur.welcome){
+    ops.push(sb.from('aca_welcome_messages').upsert({project_id:PROJECT_ID, welcome:cur.welcome}, {onConflict:'project_id'}).throwOnError());
+  }
+  if(!hasAva()){
+    ops.push(...diffRepeater(prev.kmsUsers, cur.kmsUsers, 'web_portal_users', r=>({project_id:PROJECT_ID, email:r.email, username:r.username, kms_level:r.kmsLevel, portal_level:r.portalLevel||'Level-1', is_admin:!!r.isAdmin})));
+  }
+  await Promise.all(ops);
+  lastSynced = cur;
+}
+
+/* ---------------- Submit notify + confirm modal ---------------- */
+async function doSave(){
+  if(!PROJECT_ID){ markSaved('no-id'); return; }
+  clearTimeout(autosaveTimer);
+  try{
+    await saveToSupabase();
+    markSaved('ok');
+  }catch(e){
+    console.error('sync failed', e); markSaved('error'); return;
+  }
+  try{
+    const res = await fetch(SUPABASE_URL + '/functions/v1/form-submit-notify', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', apikey:SUPABASE_KEY },
+      body: JSON.stringify({ projectId:PROJECT_ID, formUrl:location.href, source:'aca_basic_settings' }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.error) throw new Error(body.error || ('HTTP '+res.status));
+  }catch(err){ console.error('form-submit-notify failed', err); }
+}
+let submitModalState = null;
+window.closeSubmitConfirmModal = function(){ submitModalState=null; renderSubmitConfirmModal(); };
+window.openSubmitConfirmModal = function(){ submitModalState={step:'confirm'}; renderSubmitConfirmModal(); };
+function renderSubmitConfirmModal(){
+  let el = document.getElementById('submitConfirmModal');
+  if(!submitModalState){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='submitConfirmModal'; document.body.appendChild(el); }
+  el.className = 'modal-overlay';
+  const iconHtml = '<div style="width:44px;height:44px;border-radius:50%;background:#e6f6f4;color:#0f766e;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px;">✓</div>';
+  if(submitModalState.step==='confirm'){
+    el.innerHTML = `<div class="modal-box" style="width:380px;max-width:90vw;text-align:center;">${iconHtml}
+      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">${t('submit_confirm_line1')}<br>${t('submit_confirm_line2')}</p>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button type="button" class="btn" id="submitConfirmCancel">${t('submit_cancel')}</button>
+        <button type="button" class="btn primary" id="submitConfirmOk">${t('submit_submit')}</button>
+      </div></div>`;
+    el.onclick = e=>{ if(e.target===el) closeSubmitConfirmModal(); };
+    el.querySelector('#submitConfirmCancel').onclick = closeSubmitConfirmModal;
+    el.querySelector('#submitConfirmOk').onclick = async ()=>{
+      const btn = el.querySelector('#submitConfirmOk');
+      btn.textContent = t('submit_submitting'); btn.disabled = true;
+      await doSave();
+      submitModalState = {step:'done'};
+      renderSubmitConfirmModal();
+    };
+  } else {
+    el.innerHTML = `<div class="modal-box" style="width:380px;max-width:90vw;text-align:center;">${iconHtml}
+      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;">${t('submit_done')}</p>
+      <div style="display:flex;justify-content:center;"><button type="button" class="btn primary" id="submitConfirmClose">${t('submit_ok')}</button></div></div>`;
+    el.onclick = e=>{ if(e.target===el) closeSubmitConfirmModal(); };
+    el.querySelector('#submitConfirmClose').onclick = closeSubmitConfirmModal;
+  }
+}
+
+/* ---------------- Load ---------------- */
+function renderBrandSub(){
+  document.getElementById('brandSub').textContent = (PROJECT_NAME ? PROJECT_NAME+' · ' : '') + 'Pre-setup';
+}
+async function seedDefaultsIfEmpty(){
+  // First real load for a fresh project: write the 5 preset departments + 21 preset scenarios
+  // into the DB once as real rows (not just an in-memory default), so they behave exactly like
+  // any other row from here on - deletable, editable, no more front-end-only fallback ever
+  // needed again. This mirrors the family's "front-end and DB behavior must agree" rule (see
+  // AVA basic settings' languages/music default-prefill fix) instead of inventing a merge
+  // between DB rows and in-memory presets on every load.
+  const seed = defaultState();
+  const deptRows = seed.departments.map((r,i)=>({ id:r._id, project_id:PROJECT_ID, sort_order:i, name:r.name, ext:'', emails:'' }));
+  const scenRows = seed.scenarios.map((r,i)=>({ id:r._id, project_id:PROJECT_ID, sort_order:i, name:r.name, handling:'transfer_human', department_name:'', ext:'', email:'' }));
+  await Promise.all([
+    sb.from('aca_transfer_departments').insert(deptRows).throwOnError(),
+    sb.from('aca_transfer_scenarios').insert(scenRows).throwOnError(),
+  ]);
+  state.departments = seed.departments;
+  state.scenarios = seed.scenarios;
+}
+async function loadFromSupabase(){
+  if(!PROJECT_ID){ markSaved('no-id'); showBanner('banner_no_project'); return; }
+  isHydrating = true;
+  let projRes, deptRes, scenRes, welcomeRes, kmsRes;
+  try{
+    [projRes, deptRes, scenRes, welcomeRes, kmsRes] = await Promise.all([
+      sb.from('projects').select('id,name,products').eq('id', PROJECT_ID).maybeSingle(),
+      sb.from('aca_transfer_departments').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
+      sb.from('aca_transfer_scenarios').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
+      sb.from('aca_welcome_messages').select('*').eq('project_id', PROJECT_ID).maybeSingle(),
+      sb.from('web_portal_users').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
+    ]);
+    [projRes, deptRes, scenRes, welcomeRes, kmsRes].forEach(r=>{ if(r.error) throw r.error; });
+  }catch(e){
+    console.error('loadFromSupabase failed', e);
+    markSaved('error'); showBanner('banner_connection_error');
+    isHydrating = false; return;
+  }
+  if(!projRes.data){
+    markSaved('not-found'); showBanner('banner_hotel_not_found');
+  } else {
+    PROJECT_NAME = projRes.data.name;
+    PRODUCTS = projRes.data.products || [];
+  }
+  renderBrandSub();
+
+  const dbDepts = deptRes.data || [];
+  const dbScens = scenRes.data || [];
+  if(projRes.data && dbDepts.length===0 && dbScens.length===0){
+    try{ await seedDefaultsIfEmpty(); }catch(e){ console.error('seedDefaultsIfEmpty failed', e); }
+  } else {
+    state.departments = dbDepts.map(r=>({ _id:r.id, name:r.name||'', ext:r.ext||'', emails:r.emails||'' }));
+    state.scenarios = dbScens.map(r=>({ _id:r.id, name:r.name||'', handling:r.handling||'transfer_human', dept:r.department_name||'', ext:r.ext||'', email:r.email||'' }));
+  }
+
+  if(welcomeRes.data && typeof welcomeRes.data.welcome==='string' && welcomeRes.data.welcome){
+    state.welcome = welcomeRes.data.welcome;
+    welcomeIsDefault = false;
+  } else {
+    state.welcome = defaultWelcome(PROJECT_NAME, uiLang);
+    welcomeIsDefault = true;
+  }
+
+  state.kmsUsers = (kmsRes.data||[]).map(r=>({ _id:r.id, email:r.email||'', username:r.username||'', kmsLevel:r.kms_level||'Publish', portalLevel:r.portal_level||'Level-1', isAdmin:!!r.is_admin }));
+
+  lastSynced = snapshot(state);
+  renderActivePanel();
+  isHydrating = false;
+}
+
+/* ---------------- Init ---------------- */
+window.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('menuToggle').onclick = ()=> document.getElementById('avaSidebar').classList.toggle('open');
+  document.getElementById('uiLangSelect').value = uiLang;
+  document.getElementById('uiLangSelect').onchange = e=>{ uiLang = e.target.value; applyUiLanguage(); };
+  document.getElementById('welcomeTextarea').oninput = e=>{ state.welcome = e.target.value; welcomeIsDefault = false; scheduleAutosave(); };
+  document.getElementById('restoreWelcomeBtn').onclick = ()=>{
+    welcomeIsDefault = true;
+    state.welcome = defaultWelcome(PROJECT_NAME, uiLang);
+    renderWelcome();
+    scheduleAutosave();
+  };
+  renderSidebar();
+  applyStaticText();
+  switchPanel('departments');
+  loadFromSupabase();
+});
+</script>
+</body>
+</html>
