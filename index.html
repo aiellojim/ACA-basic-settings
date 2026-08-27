@@ -286,8 +286,42 @@ const UI_STRINGS = {
   submit_submitting:{ en:'Submitting…', zh:'提交中…', ja:'送信中…' },
   submit_done:{ en:'Submitted. Thank you!', zh:'已提交，感謝您的填寫！', ja:'送信されました。ありがとうございます！' },
   submit_ok:{ en:'OK', zh:'好的', ja:'OK' },
+  confirm_cancel:{ en:'Cancel', zh:'取消', ja:'キャンセル' },
+  confirm_ok:{ en:'Confirm', zh:'確定', ja:'確認' },
+  delete_row_confirm:{ en:'Delete this row?', zh:'確定要刪除這一列嗎？', ja:'この行を削除しますか？' },
 };
 function t(key){ const e = UI_STRINGS[key]; return e ? (e[uiLang]||e.en) : key; }
+
+/* ---------------- Generic confirm modal (replaces native confirm(), for row deletion) ---------------- */
+// Same pattern as AVA basic settings' genericConfirmModal (2026-07-28 there): amber "!" icon,
+// takes a plain-text message string in the current UI language and an onConfirm callback.
+let genericConfirmState = null; // null | {message:string, onConfirm:Function}
+function closeGenericConfirmModal(){ genericConfirmState = null; renderGenericConfirmModal(); }
+function showGenericConfirm(message, onConfirm){
+  genericConfirmState = {message, onConfirm};
+  renderGenericConfirmModal();
+}
+function renderGenericConfirmModal(){
+  let el = document.getElementById('genericConfirmModal');
+  if(!genericConfirmState){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='genericConfirmModal'; document.body.appendChild(el); }
+  el.className = 'modal-overlay';
+  const iconHtml = '<div style="width:44px;height:44px;border-radius:50%;background:#fff7ed;color:#d97706;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px;font-weight:700;">!</div>';
+  el.innerHTML = `<div class="modal-box" style="width:340px;max-width:90vw;text-align:center;">${iconHtml}
+    <p style="margin:0 0 20px;font-size:14px;color:var(--ava-text);line-height:1.6;">${escapeHtml(genericConfirmState.message)}</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button type="button" class="btn" id="genericConfirmCancel">${t('confirm_cancel')}</button>
+      <button type="button" class="btn primary" id="genericConfirmOk">${t('confirm_ok')}</button>
+    </div></div>`;
+  el.onclick = e=>{ if(e.target===el) closeGenericConfirmModal(); };
+  el.querySelector('#genericConfirmCancel').onclick = closeGenericConfirmModal;
+  el.querySelector('#genericConfirmOk').onclick = ()=>{
+    const cb = genericConfirmState.onConfirm;
+    genericConfirmState = null;
+    renderGenericConfirmModal();
+    cb();
+  };
+}
 
 /* ---------------- Departments ---------------- */
 function renderDepartments(){
@@ -312,7 +346,11 @@ function renderDepartments(){
     inp.oninput = ()=>{ state.departments[ri][inp.dataset.k] = inp.value; scheduleAutosave(); };
   });
   wrap.querySelectorAll('.rm').forEach(b=>{
-    b.onclick = ()=>{ state.departments.splice(+b.dataset.ri,1); renderDepartments(); renderScenarios(); scheduleAutosave(); };
+    b.onclick = ()=>{
+      showGenericConfirm(t('delete_row_confirm'), ()=>{
+        state.departments.splice(+b.dataset.ri,1); renderDepartments(); renderScenarios(); scheduleAutosave();
+      });
+    };
   });
 }
 
@@ -388,7 +426,11 @@ function renderScenarios(){
     if(inp.tagName==='SELECT') inp.onchange = apply; else inp.oninput = apply;
   });
   wrap.querySelectorAll('.rm').forEach(b=>{
-    b.onclick = ()=>{ state.scenarios.splice(+b.dataset.ri,1); renderScenarios(); scheduleAutosave(); };
+    b.onclick = ()=>{
+      showGenericConfirm(t('delete_row_confirm'), ()=>{
+        state.scenarios.splice(+b.dataset.ri,1); renderScenarios(); scheduleAutosave();
+      });
+    };
   });
 }
 
