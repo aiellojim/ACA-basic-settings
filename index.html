@@ -238,6 +238,7 @@ let activePanel = 'departments';
 let isHydrating = false;
 
 const UI_STRINGS = {
+  nav_group_label:{ en:'Form Sections', zh:'表單分頁', ja:'フォーム項目' },
   nav_departments:{ en:'Transfer Departments', zh:'轉接部門設定', ja:'転送部署設定' },
   nav_scenarios:{ en:'Transfer Scenarios', zh:'轉接情境設定', ja:'転送シナリオ設定' },
   nav_welcome:{ en:'Welcome Message', zh:'歡迎詞', ja:'ウェルカムメッセージ' },
@@ -464,7 +465,8 @@ const NAV_ITEMS = [
   { id:'kms', labelKey:'nav_kms' },
 ];
 function renderSidebar(){
-  document.getElementById('avaSidebar').innerHTML = NAV_ITEMS.map((item,i)=>`
+  document.getElementById('avaSidebar').innerHTML = '<div class="nav-group-label">'+t('nav_group_label')+'</div>' +
+    NAV_ITEMS.map((item,i)=>`
     <button class="nav-item ${activePanel===item.id?'active':''}" onclick="switchPanel('${item.id}')">
       <span class="num">${i+1}</span><span class="label">${t(item.labelKey)}</span>
     </button>`).join('');

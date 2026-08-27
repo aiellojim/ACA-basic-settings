@@ -22,8 +22,10 @@
   匯出後手動比對/謄寫進 UAT Portal）。
 - 連結格式：`?p=<project_id>`（`project_id` 對應共用 Supabase 專案的 `public.projects.id`）。
 - `form-submit-notify` Edge Function 的 `source` 標籤：`aca_basic_settings`，通知信固定收件人
-  `avapjm@aiello.ai`（跟其他表單「通知專案負責人」不同，這個是寫死的固定信箱，尚未套用共用
-  Edge Function 的 `SOURCE_LABELS` map，部署前記得去那邊加一行）。
+  `avapjm@aiello.ai`（跟其他表單「通知專案負責人」不同，這個是寫死的固定信箱）。已在 2026-08-27
+  部署 `form-submit-notify` v5，於 `SOURCE_LABELS` map 加上 `aca_basic_settings: "ACA 基礎設定
+  表單"`，跟 AVA basic settings 沿用的 `basic_settings: "基礎設定表單"` 標籤區分開來，避免兩邊
+  通知信在標題/內文完全看不出差異。
 - 主要資料表：`aca_transfer_departments`、`aca_transfer_scenarios`、`aca_welcome_messages`（見
   `migration.sql`，尚未 apply，等 Jim 確認後再跑）。**KMS 使用者刻意不開新表**，直接讀寫既有的
   `web_portal_users`（跟 AVA basic settings 完全共用同一張表，欄位、Publish/Edit 兩級枚舉值都
@@ -66,15 +68,19 @@
 
 ## 尚未完成的事（Jim 之後要做的）
 
-1. 在本機建立這個 repo（`index.html`／`migration.sql`／這份 `CLAUDE.md` 已放進資料夾）：
-   `git init` + 建立 GitHub repo + push。
-2. 確認 `migration.sql` 沒問題後透過 Supabase MCP 或 SQL editor 實際 apply。
-3. 去 `form-submit-notify` Edge Function 的 `SOURCE_LABELS` map 加 `aca_basic_settings` 這一行，
-   收件人 `avapjm@aiello.ai`。
-4. Vercel 專案設定、綁定 `aca-basic-settings.aiello.dev`。
-5. 去 hotel-dashboard 的 `projects.products` 選項清單加上 `"ACA"` 這個產品標籤（目前只有
-   AVA/GW/KMS/TMSP），並在專案總覽頁加上這個表單的連結產生按鈕（比照 SiteChat Settings 當初的
-   做法）。
+1. ~~在本機建立這個 repo~~ 已完成：`git init` + GitHub repo `aiellojim/ACA-basic-settings` + push。
+2. ~~apply migration.sql~~ 已完成（2026-08-27，透過 Supabase MCP）：三張表
+   `aca_transfer_departments`／`aca_transfer_scenarios`／`aca_welcome_messages` 都已建立、RLS 已開。
+3. ~~SOURCE_LABELS~~ 已完成（2026-08-27）：`form-submit-notify` v5 已加上
+   `aca_basic_settings: "ACA 基礎設定表單"`。
+4. Vercel 專案已建立、目前先用預設網域 `https://aca-basic-settings.vercel.app` 測試（2026-08-27）；
+   還沒綁定正式網域 `aca-basic-settings.aiello.dev`，之後去 Vercel 專案 Settings → Domains 加。
+5. 去 hotel-dashboard 的 `projects.products` 選項清單加上 `"ACA"` 這個產品標籤——**注意**：實查
+   `projects` 表發現已經有多筆專案的 `products` 陣列裡存在 `"ACA"` 值（例如 國聯大飯店、Allianz
+   安聯人壽、板橋凱撒大飯店等），代表這個標籤可能已經在別處（例如某個下拉選單/常數清單）加過了，
+   下次動這塊之前先去 hotel-dashboard 確認目前 UI 選項清單的實際狀態，不要照舊假設「目前只有
+   AVA/GW/KMS/TMSP」重複做一次。專案總覽頁加上這個表單的連結產生按鈕（比照 SiteChat Settings 當初
+   的做法）這件事本身還沒做。
 
 ## 硬規則
 
