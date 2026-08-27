@@ -30,9 +30,15 @@
   `migration.sql`，尚未 apply，等 Jim 確認後再跑）。**KMS 使用者刻意不開新表**，直接讀寫既有的
   `web_portal_users`（跟 AVA basic settings 完全共用同一張表，欄位、Publish/Edit 兩級枚舉值都
   是同一套）。
-- KMS 權限的編輯歸屬：專案 `products` 陣列裡有 `"AVA"` 時，這個表單的 KMS 分頁改為唯讀顯示（編輯
-  以 AVA basic settings 為主），沒有 `"AVA"` 時才開放在這裡直接編輯／新增／刪除。判斷邏輯是
-  `hasAva()`，改動前先確認這個規則沒有跟著漂移。
+- KMS Permissions 分頁本身的顯示與否：`showKms()`（`PRODUCTS.includes('KMS')`）——只認專案是否明確
+  掛了 `"KMS"` 標籤，跟有沒有 AVA/ACA 無關（2026-08-27 跟 Jim 確認：KMS 是可以不買的獨立產品，選了
+  ACA 不代表飯店真的有開通 KMS 後台帳號）。`showKms()` 為 false 時整個分頁連同側邊欄的「KMS
+  Permissions」項目一起隱藏，不是只隱藏內容——因為這個分頁本身就是純 KMS，沒有其他非 KMS 內容可看。
+  這條規則跟 AVA basic settings 的 `showKms` 是同一套邏輯，兩邊要保持一致（AVA basic settings 那邊
+  同一天也拿掉了原本 `hasAva||hasGW` 的隱性推論）。
+- KMS 權限的編輯歸屬（`showKms()` 為 true、分頁確實顯示之後才有意義）：專案 `products` 陣列裡同時有
+  `"AVA"` 時，這個表單的 KMS 分頁改為唯讀顯示（編輯以 AVA basic settings 為主），沒有 `"AVA"` 時才
+  開放在這裡直接編輯／新增／刪除。判斷邏輯是 `hasAva()`，改動前先確認這個規則沒有跟著漂移。
 - 轉接部門、轉接場景的名稱欄位、歡迎詞都是**純文字**（`text`，不是 jsonb）——Jim 明確決定
   （2026-08-27）：這些內容客戶只填一版，不像 Greeting/FAQ 那樣要分 en/zh/ja 三份。只有這個表單
   自己的 UI 文字（標籤、按鈕、說明）走 `uiLang`/`UI_STRINGS`/`t()` 三語，資料本身不分語言——這跟
