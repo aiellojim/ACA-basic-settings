@@ -36,9 +36,15 @@
   Permissions」項目一起隱藏，不是只隱藏內容——因為這個分頁本身就是純 KMS，沒有其他非 KMS 內容可看。
   這條規則跟 AVA basic settings 的 `showKms` 是同一套邏輯，兩邊要保持一致（AVA basic settings 那邊
   同一天也拿掉了原本 `hasAva||hasGW` 的隱性推論）。
-- KMS 權限的編輯歸屬（`showKms()` 為 true、分頁確實顯示之後才有意義）：專案 `products` 陣列裡同時有
-  `"AVA"` 時，這個表單的 KMS 分頁改為唯讀顯示（編輯以 AVA basic settings 為主），沒有 `"AVA"` 時才
-  開放在這裡直接編輯／新增／刪除。判斷邏輯是 `hasAva()`，改動前先確認這個規則沒有跟著漂移。
+- KMS 權限的編輯歸屬（`showKms()` 為 true、分頁確實顯示之後才有意義），判斷邏輯是 `avaOwnsKms()`
+  （2026-08-27 從單純 `hasAva()` 改成 `hasAva() || hasGW()`）：hotel-dashboard 專案總覽頁的「基礎
+  設定」連結（連到 AVA basic settings）在 `products` 有 `AVA`、`GW`、`TMSP` 任一項時就會顯示，但
+  TMSP 不需要 KMS（跟 AVA basic settings 自己的 `showKms` 一致，只認 AVA/GW 兩個標籤）——所以只要
+  專案有 AVA 或 GW（不管有沒有 TMSP），AVA basic settings 那邊也會顯示/編輯同一份 `web_portal_users`
+  資料，這時 ACA 這邊就該讓為唯讀鏡像，避免兩個表單同時宣稱自己是主要編輯端、互相覆蓋。只有專案
+  完全沒有 AVA 也沒有 GW（例如只有 ACA+KMS，或 ACA+KMS+TMSP）時，才在這裡直接開放編輯／新增／刪除。
+  改動前先確認這個規則沒有跟著漂移，尤其是 hotel-dashboard 那邊「基礎設定」連結的顯示條件如果之後
+  改了，這裡要同步跟著改。
 - 轉接部門、轉接場景的名稱欄位、歡迎詞都是**純文字**（`text`，不是 jsonb）——Jim 明確決定
   （2026-08-27）：這些內容客戶只填一版，不像 Greeting/FAQ 那樣要分 en/zh/ja 三份。只有這個表單
   自己的 UI 文字（標籤、按鈕、說明）走 `uiLang`/`UI_STRINGS`/`t()` 三語，資料本身不分語言——這跟

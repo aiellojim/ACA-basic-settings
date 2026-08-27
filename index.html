@@ -226,12 +226,26 @@ let lastSynced = null;
 let PROJECT_NAME = null;
 let PRODUCTS = [];
 function hasAva(){ return PRODUCTS.includes('AVA'); }
+function hasGW(){ return PRODUCTS.includes('GW'); }
 // KMS is sold as its own separate product - having AVA/GW/ACA/SiteChat does NOT imply the hotel
 // actually has a KMS account provisioned (Jim, 2026-08-27). The KMS Permissions tab only exists
 // to manage that account, so with no "KMS" tag there's nothing to show - hide the whole tab, not
 // just its content. Same rule now applied to AVA basic settings' showKms (which used to also
 // infer KMS from AVA/GW presence - that inference was wrong and has been removed there too).
 function showKms(){ return PRODUCTS.includes('KMS'); }
+// Read-only-mirror-vs-editable ownership (Jim, 2026-08-27): AVA basic settings is the primary
+// editor for web_portal_users whenever ITS OWN "基礎設定" link would also show a KMS panel for
+// this project - not just when "AVA" is present. Hotel-dashboard's project overview shows the
+// AVA basic settings link for AVA, GW, OR TMSP (see hotel-project-dashboard.jsx's BASIC_ITEMS
+// card), but TMSP alone doesn't need KMS (mirrors AVA basic settings' own showKms, which only
+// counts AVA/GW as KMS-relevant, never TMSP). So the correct mirror condition is two conditions
+// at once: (1) AVA basic settings' own link is shown for a KMS-relevant product - i.e. hasAva()
+// or hasGW() - AND (2) the project actually has KMS at all. Condition (2) is already guaranteed
+// by the time this runs, since the whole KMS tab is hidden via showKms() otherwise - so this
+// helper only needs to check condition (1). Before this fix, a GW+KMS+ACA project (no "AVA" tag)
+// would have BOTH forms claim editable ownership of the same web_portal_users rows, since ACA's
+// old hasAva()-only check missed the GW case entirely.
+function avaOwnsKms(){ return hasAva() || hasGW(); }
 function snapshot(o){ return JSON.parse(JSON.stringify(o)); }
 
 // True as long as state.welcome is still the auto-generated template, not something the org
@@ -270,7 +284,7 @@ const UI_STRINGS = {
   restore_default_btn:{ en:'Restore Default', zh:'回復預設', ja:'デフォルトに戻す' },
   kms_title:{ en:'KMS Permissions', zh:'權限設定（KMS）', ja:'KMS権限設定' },
   kms_desc:{ en:'Knowledge Management System access. Shares the same account as Aiello TMS Portal.', zh:'知識管理系統存取權限，與 Aiello TMS Portal 共用同一組帳號。', ja:'ナレッジ管理システムのアクセス権限です。Aiello TMS Portalと同じアカウントを共有します。' },
-  kms_shared_note:{ en:'This project also has AVA — this list is managed from AVA Basic Settings and shown here read-only.', zh:'此專案同時有 AVA 產品，此名單以 AVA Basic Settings 為主要編輯端，這裡僅供顯示。', ja:'このプロジェクトはAVAも利用しているため、このリストはAVA Basic Settings側で編集し、ここでは表示のみとなります。' },
+  kms_shared_note:{ en:'This project is also managed from AVA Basic Settings, which is the primary editor for this list — shown here read-only.', zh:'此專案同時可從 AVA Basic Settings 管理，該表單為此名單的主要編輯端，這裡僅供顯示。', ja:'このプロジェクトはAVA Basic Settingsからも管理されており、そちらがこのリストの主な編集先です。ここでは表示のみとなります。' },
   kms_ref_title:{ en:'KMS Level Reference', zh:'KMS 權限等級參考', ja:'KMS権限レベル早見表' },
   kms_ref_level:{ en:'KMS Level', zh:'KMS 權限', ja:'KMS権限' },
   kms_ref_permission:{ en:'Permission', zh:'權限說明', ja:'権限内容' },
@@ -452,7 +466,7 @@ function renderKmsRefTable(){
 }
 function renderKms(){
   renderKmsRefTable();
-  const editable = !hasAva();
+  const editable = !avaOwnsKms();
   const sharedNote = document.getElementById('kmsSharedNote');
   sharedNote.style.display = editable ? 'none' : 'block';
   sharedNote.textContent = t('kms_shared_note');
@@ -645,7 +659,7 @@ async function saveToSupabase(){
   if(prev.welcome !== cur.welcome){
     ops.push(sb.from('aca_welcome_messages').upsert({project_id:PROJECT_ID, welcome:cur.welcome}, {onConflict:'project_id'}).throwOnError());
   }
-  if(!hasAva()){
+  if(!avaOwnsKms()){
     ops.push(...diffRepeater(prev.kmsUsers, cur.kmsUsers, 'web_portal_users', r=>({project_id:PROJECT_ID, email:r.email, username:r.username, kms_level:r.kmsLevel, portal_level:r.portalLevel||'Level-1', is_admin:!!r.isAdmin})));
   }
   await Promise.all(ops);
