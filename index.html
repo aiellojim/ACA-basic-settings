@@ -55,10 +55,12 @@
   table.rep .rm svg{display:block;}
   table.rep .rm:hover{background:#fef2f2;border-color:#fecaca;}
   table.rep td.rm-cell{padding-left:12px;text-align:center;width:36px;}
-  /* 開啟連結按鈕（比照 AVA basic settings 的 renderRepeater type:"url" 欄位樣式，直接搬過來，
-     顏色變數換成這個表單自己的 --ava-* 系列）。 */
-  .icon-btn{padding:0;flex-shrink:0;color:var(--ava-text-light);}
-  .icon-btn:hover{color:var(--ava-primary);border-color:var(--ava-primary);}
+  /* 開啟連結按鈕（比照 AVA basic settings 的 renderRepeater type:"url" 欄位樣式）。刻意做成
+     border:none/transparent 的純圖示按鈕，不是 .btn 那種有外框的樣式——AVA basic settings 那邊
+     視覺上也是無框圖示按鈕（2026-09-04 跟 Jim 確認：ACA 這裡第一版沿用 .btn.icon-btn 疊加樣式，
+     沒有另外蓋掉 .btn 的外框，導致視覺上多了一個框，這裡直接修正）。 */
+  .icon-btn{padding:0;flex-shrink:0;color:var(--ava-text-light);border:none;background:transparent;}
+  .icon-btn:hover{color:var(--ava-primary);}
   .icon-btn:disabled{opacity:.4;cursor:not-allowed;}
   .field-with-icon{display:flex;gap:6px;align-items:center;}
   .field-with-icon input{flex:1;min-width:0;}
