@@ -265,9 +265,12 @@ function showKms(){ return PRODUCTS.includes('KMS'); }
 // 獨立產品標籤），跟 ACA 方案無關（2026-09-04 跟 Jim 確認：不能因為方案是 SuperLite/SuperPro
 // 就擋掉一個飯店明明另外買了 KMS 產品的權限設定分頁，這樣會跟 showKms() 本身「KMS 是否顯示只認
 // KMS 標籤」的既有原則自相矛盾）。
+// SuperLite 不顯示「轉接部門設定」（2026-09-04 修正，Jim）：最初把 departments 放進 SuperLite
+// 是誤判，SuperLite 實際只需要歡迎詞跟知識庫 FAQ 兩個跟方案綁定的分頁，加上 KMS 權限設定（獨立
+// 判斷，見 showKms()，不受這裡影響）。
 const ACA_PLAN_TABS = {
   Original:  ['departments','scenarios','welcome'],
-  SuperLite: ['departments','welcome','faq'],
+  SuperLite: ['welcome','faq'],
   SuperPro:  ['departments','scenarios','welcome','faq'],
 };
 let ACA_PLAN = 'Original';
