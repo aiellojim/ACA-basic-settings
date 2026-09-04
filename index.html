@@ -250,9 +250,13 @@ function hasGW(){ return PRODUCTS.includes('GW'); }
 function showKms(){ return PRODUCTS.includes('KMS'); }
 // ACA 方案分級（2026-09-04，Jim）：換方案要重新簽約，同一飯店不會同時持有兩種方案，方案本身存在
 // projects.aca_plan（hotel-dashboard 那邊維護，這裡唯讀）。未知/空值一律當 Original 處理（顯示最
-// 完整的既有 4 個分頁），不要因為讀不到方案就把分頁都藏起來。
+// 完整的既有分頁組合），不要因為讀不到方案就把分頁都藏起來。
+// 注意：這裡刻意不列 'kms' —— KMS 權限設定分頁是否顯示只看 showKms()（專案有沒有掛 "KMS" 這個
+// 獨立產品標籤），跟 ACA 方案無關（2026-09-04 跟 Jim 確認：不能因為方案是 SuperLite/SuperPro
+// 就擋掉一個飯店明明另外買了 KMS 產品的權限設定分頁，這樣會跟 showKms() 本身「KMS 是否顯示只認
+// KMS 標籤」的既有原則自相矛盾）。
 const ACA_PLAN_TABS = {
-  Original:  ['departments','scenarios','welcome','kms'],
+  Original:  ['departments','scenarios','welcome'],
   SuperLite: ['departments','welcome','faq'],
   SuperPro:  ['departments','scenarios','welcome','faq'],
 };
@@ -646,7 +650,7 @@ const NAV_ITEMS = [
 ];
 function visibleNavItems(){
   const planTabs = planVisibleTabIds();
-  return NAV_ITEMS.filter(item => planTabs.includes(item.id) && (item.id!=='kms' || showKms()));
+  return NAV_ITEMS.filter(item => item.id==='kms' ? showKms() : planTabs.includes(item.id));
 }
 function renderSidebar(){
   document.getElementById('avaSidebar').innerHTML = '<div class="nav-group-label">'+t('nav_group_label')+'</div>' +

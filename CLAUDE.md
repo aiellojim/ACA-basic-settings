@@ -77,16 +77,20 @@
   AVA basic settings 有沒有現成的可以照抄，不要自創一套。KMS 分頁的「KMS 權限等級參考」表格內容
   （Publish/Edit 說明文字）也是直接搬 AVA basic settings 的 `KMS_PERMISSION_DETAIL`，兩邊如果之後
   要改權限說明文字記得兩邊一起改（目前沒有共用成同一個檔案）。
-- **分頁架構與方案顯示邏輯**（2026-09-04 新增）：表單固定有 5 個分頁定義在 `NAV_ITEMS`——
-  1 轉接部門設定（`departments`）、2 轉接情境設定（`scenarios`）、3 歡迎詞（`welcome`）、
-  4 KMS 權限設定（`kms`）、5 知識庫 FAQ（`faq`，新增）。實際顯示哪幾個分頁由 `ACA_PLAN_TABS`
-  常數 + `planVisibleTabIds()` 決定：`Original` 顯示 1,2,3,4（跟改版前的表單一樣）、
-  `SuperLite` 顯示 1,3,5、`SuperPro` 顯示 1,2,3,5。`ACA_PLAN` 這個模組變數在
-  `loadFromSupabase()` 裡讀 `projects.aca_plan`（`hotel-dashboard` 那邊維護、寫入，這個表單對
-  它是唯讀，未知/空值一律當 `'Original'` 處理）。`visibleNavItems()` 同時套用
-  `planVisibleTabIds()` 跟既有的 `showKms()`（KMS 分頁即使方案有排到，專案沒掛 `KMS` 標籤一樣
-  隱藏）；`loadFromSupabase()` 收尾時如果目前 `activePanel` 不在可見清單內會退回 `departments`
-  （取代原本只針對 kms 的特判）。
+- **分頁架構與方案顯示邏輯**（2026-09-04 新增，同日修正）：表單固定有 5 個分頁定義在
+  `NAV_ITEMS`——1 轉接部門設定（`departments`）、2 轉接情境設定（`scenarios`）、3 歡迎詞
+  （`welcome`）、4 KMS 權限設定（`kms`）、5 知識庫 FAQ（`faq`，新增）。1/2/3/5 這四個分頁是否
+  顯示由 `ACA_PLAN_TABS` 常數 + `planVisibleTabIds()` 決定：`Original` 顯示 1,2,3、`SuperLite`
+  顯示 1,3,5、`SuperPro` 顯示 1,2,3,5。`ACA_PLAN` 這個模組變數在 `loadFromSupabase()` 裡讀
+  `projects.aca_plan`（`hotel-dashboard` 那邊維護、寫入，這個表單對它是唯讀，未知/空值一律當
+  `'Original'` 處理）。**KMS 權限設定（`kms`）刻意不放進 `ACA_PLAN_TABS` 裡、完全脫離方案判斷**
+  ——它是否顯示自始至終只看既有的 `showKms()`（專案有沒有掛獨立的 `KMS` 產品標籤），跟 ACA
+  方案完全無關（2026-09-04 跟 Jim 確認：一開始把 `kms` 寫進 `Original` 陣列、隱含「SuperLite/
+  SuperPro 一律不能顯示 KMS 分頁」，這樣會跟 `showKms()` 本身「KMS 顯示與否只認 KMS 標籤」的
+  既有原則矛盾——一家飯店完全可能是 ACA SuperLite/SuperPro 又另外買了 KMS 產品）。
+  `visibleNavItems()` 的過濾邏輯因此是：`kms` 這個項目只看 `showKms()`，其餘項目才看
+  `planTabs.includes(item.id)`。`loadFromSupabase()` 收尾時如果目前 `activePanel` 不在可見
+  清單內會退回 `departments`（取代原本只針對 kms 的特判）。
 - **知識庫 FAQ 分頁**（`panel-faq`）：架構完全比照 AVA basic settings 的「其他需確認項目」
   （`pending-items`）——文件名稱＋連結兩欄的表格，資料存在新表 `aca_faq_documents`（欄位形狀
   比照 `aca_transfer_departments`／`aca_transfer_scenarios`：`id` 由前端 `uid()` 明確帶入、
