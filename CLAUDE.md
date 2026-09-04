@@ -81,7 +81,8 @@
   `NAV_ITEMS`——1 轉接部門設定（`departments`）、2 轉接情境設定（`scenarios`）、3 歡迎詞
   （`welcome`）、4 KMS 權限設定（`kms`）、5 知識庫 FAQ（`faq`，新增）。1/2/3/5 這四個分頁是否
   顯示由 `ACA_PLAN_TABS` 常數 + `planVisibleTabIds()` 決定：`Original` 顯示 1,2,3、`SuperLite`
-  顯示 1,3,5、`SuperPro` 顯示 1,2,3,5。`ACA_PLAN` 這個模組變數在 `loadFromSupabase()` 裡讀
+  顯示 3,5（2026-09-04 修正：原本誤放進 departments，SuperLite 其實不需要轉接部門設定）、
+  `SuperPro` 顯示 1,2,3,5。`ACA_PLAN` 這個模組變數在 `loadFromSupabase()` 裡讀
   `projects.aca_plan`（`hotel-dashboard` 那邊維護、寫入，這個表單對它是唯讀，未知/空值一律當
   `'Original'` 處理）。**KMS 權限設定（`kms`）刻意不放進 `ACA_PLAN_TABS` 裡、完全脫離方案判斷**
   ——它是否顯示自始至終只看既有的 `showKms()`（專案有沒有掛獨立的 `KMS` 產品標籤），跟 ACA
