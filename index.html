@@ -62,6 +62,12 @@
   .reftable td{padding:9px;text-align:center;border-bottom:1px solid var(--ava-border);line-height:1.5;}
   .reftable tr:nth-child(even) td{background:#f8fafc;}
   .reftable td.levelcol{font-weight:700;color:var(--ava-primary-dark);background:#f0fdfa!important;}
+  .lockbar{display:flex;align-items:center;justify-content:space-between;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:11px 15px;margin-bottom:16px;font-size:var(--fs);color:#9a3412;gap:12px;line-height:1.6;flex-wrap:wrap;}
+  .lockbar.unlocked{background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
+  .lockbar-unlock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .lockbar-label{font-size:12px;color:#9a3412;white-space:nowrap;}
+  .lockbar-pin{border:1px solid #fed7aa;background:#fff;color:var(--ava-text);padding:0 10px;height:var(--ctrl-h-sm);border-radius:8px;font-size:var(--fs);font-family:inherit;box-sizing:border-box;width:130px;}
+  .lockbar-err{font-size:12px;color:#dc2626;}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;}
   .modal-box{background:#fff;border-radius:14px;padding:24px;}
   @media(max-width:860px){
@@ -144,6 +150,13 @@
         </div>
       </div>
 
+      <div id="panel-faq" class="panel">
+        <h1 id="tFaqTitle">Knowledge Base FAQ</h1>
+        <p class="panel-sub" id="tFaqDesc">Documents and links related to this organization's knowledge base FAQ.</p>
+        <div id="faqLockBar"></div>
+        <div class="card"><div id="tbl-faq"></div></div>
+      </div>
+
   </main>
 </div>
 
@@ -219,6 +232,8 @@ function defaultState(){
     // "進入頁面前就預填預設內容...還沒接上 db 的現在預填就好").
     welcome: defaultWelcome('', uiLang),
     kmsUsers: [],
+    faqDocuments: [ {_id:uid(), name:'', url:''} ],
+    unlocked: { faq:false },
   };
 }
 let state = defaultState();
@@ -233,6 +248,16 @@ function hasGW(){ return PRODUCTS.includes('GW'); }
 // just its content. Same rule now applied to AVA basic settings' showKms (which used to also
 // infer KMS from AVA/GW presence - that inference was wrong and has been removed there too).
 function showKms(){ return PRODUCTS.includes('KMS'); }
+// ACA 方案分級（2026-09-04，Jim）：換方案要重新簽約，同一飯店不會同時持有兩種方案，方案本身存在
+// projects.aca_plan（hotel-dashboard 那邊維護，這裡唯讀）。未知/空值一律當 Original 處理（顯示最
+// 完整的既有 4 個分頁），不要因為讀不到方案就把分頁都藏起來。
+const ACA_PLAN_TABS = {
+  Original:  ['departments','scenarios','welcome','kms'],
+  SuperLite: ['departments','welcome','faq'],
+  SuperPro:  ['departments','scenarios','welcome','faq'],
+};
+let ACA_PLAN = 'Original';
+function planVisibleTabIds(){ return ACA_PLAN_TABS[ACA_PLAN] || ACA_PLAN_TABS.Original; }
 // Read-only-mirror-vs-editable ownership (Jim, 2026-08-27): AVA basic settings is the primary
 // editor for web_portal_users whenever ITS OWN "基礎設定" link would also show a KMS panel for
 // this project - not just when "AVA" is present. Hotel-dashboard's project overview shows the
@@ -294,6 +319,22 @@ const UI_STRINGS = {
   col_kms_userid:{ en:'Username', zh:'帳號', ja:'ユーザー名' },
   col_kms_level:{ en:'KMS Level', zh:'KMS 權限等級', ja:'KMS権限レベル' },
   add_kms_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  nav_faq:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
+  faq_title:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
+  faq_desc:{ en:"Documents and links related to this organization's knowledge base FAQ.", zh:'此組織知識庫 FAQ 相關的文件與連結。', ja:'この組織のナレッジベースFAQに関する資料およびリンクです。' },
+  col_faq_name:{ en:'Document Name', zh:'文件名稱', ja:'文書名' },
+  col_faq_url:{ en:'Link', zh:'連結', ja:'リンク' },
+  add_faq_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  // Ported from AVA basic settings' lockBar() (2026-09-04) - same "protect sheet" style PIN lock,
+  // same PIN, just rebuilt around ACA's t()/UI_STRINGS system instead of AVA's T()/pick(). {title}
+  // is replaced with the caller's already-localized section title in lockBar() below.
+  lockbar_readonly:{ en:'Read-only for the hotel team. {title} is managed by the Aiello team.', zh:'飯店端唯讀，{title} 由 Aiello 團隊維護。', ja:'ホテル側は閲覧のみです。{title}はAielloチームが管理します。' },
+  lockbar_unlocked:{ en:'Aiello staff edit mode is on — {title}', zh:'Aiello 員工編輯模式已開啟－{title}', ja:'Aiello担当者編集モードがオンです－{title}' },
+  lockbar_enter_pin:{ en:'Enter PIN to unlock', zh:'輸入 PIN 碼解鎖', ja:'PINを入力して解除' },
+  lockbar_pin_placeholder:{ en:'PIN', zh:'PIN 碼', ja:'PIN' },
+  lockbar_unlock_btn:{ en:'Unlock', zh:'解鎖', ja:'解除' },
+  lockbar_lock_btn:{ en:'Lock', zh:'鎖定', ja:'ロック' },
+  lockbar_incorrect_pin:{ en:'Incorrect PIN', zh:'PIN 錯誤', ja:'PINが違います' },
   header_submit_btn:{ en:'Submit / Update', zh:'提交 / 更新', ja:'送信・更新' },
   export_excel_btn:{ en:'Export Excel', zh:'匯出 Excel', ja:'Excelを出力' },
   banner_no_project:{ en:'No project link found in this URL - working in local-only mode, nothing will sync to the cloud.', zh:'此網址未帶有效的專案連結，目前僅為本機模式，不會同步至雲端。', ja:'このURLに有効なプロジェクトリンクが見つかりません。現在はローカルモードで動作しており、クラウドには同期されません。' },
@@ -341,6 +382,46 @@ function renderGenericConfirmModal(){
     renderGenericConfirmModal();
     cb();
   };
+}
+
+/* ---------------- Lock bar (PIN-gated edit lock, ported from AVA basic settings) ---------------- */
+// "Protect sheet"-style: unlocking needs the PIN (same PIN already used by the other Aiello forms),
+// re-locking is a single free click, no confirmation needed. state.unlocked is keyed by section so
+// more sections could reuse this later. Unlike AVA's version this doesn't call scheduleAutosave() on
+// toggle - there's no "unlocked" column being persisted anywhere, so there's nothing to sync.
+function lockBar(sectionKey, titleText){
+  const unlocked = state.unlocked[sectionKey];
+  const label = '<span>' + (unlocked
+    ? t('lockbar_unlocked').replace('{title}', titleText)
+    : t('lockbar_readonly').replace('{title}', titleText)) + '</span>';
+  const control = unlocked
+    ? `<button type="button" class="btn small" id="lockbtn-${sectionKey}">${t('lockbar_lock_btn')}</button>`
+    : `<div class="lockbar-unlock">
+        <span class="lockbar-label">${t('lockbar_enter_pin')}</span>
+        <input type="password" class="lockbar-pin" id="lockpin-${sectionKey}" placeholder="${escapeAttr(t('lockbar_pin_placeholder'))}" autocomplete="off">
+        <button type="button" class="btn small" id="lockbtn-${sectionKey}">${t('lockbar_unlock_btn')}</button>
+        <span class="lockbar-err" id="lockerr-${sectionKey}"></span>
+      </div>`;
+  return `<div class="lockbar${unlocked?' unlocked':''}" id="lockbar-${sectionKey}">${label}${control}</div>`;
+}
+function wireLockBar(sectionKey, rerenderFn){
+  const pinInput = document.getElementById('lockpin-'+sectionKey);
+  function tryUnlock(){
+    const pin = pinInput ? pinInput.value : '';
+    if(pin === 'aiello2026'){
+      state.unlocked[sectionKey] = true;
+      rerenderFn();
+    } else {
+      const err = document.getElementById('lockerr-'+sectionKey);
+      if(err) err.textContent = t('lockbar_incorrect_pin');
+      if(pinInput){ pinInput.value=''; pinInput.focus(); }
+    }
+  }
+  document.getElementById('lockbtn-'+sectionKey).onclick = ()=>{
+    if(state.unlocked[sectionKey]){ state.unlocked[sectionKey] = false; rerenderFn(); }
+    else tryUnlock();
+  };
+  if(pinInput){ pinInput.onkeydown = (e)=>{ if(e.key==='Enter') tryUnlock(); }; }
 }
 
 /* ---------------- Departments ---------------- */
@@ -501,6 +582,42 @@ function renderKms(){
   }
 }
 
+/* ---------------- Knowledge Base FAQ (PIN-locked, same name+link shape as AVA basic settings'
+   "Other Items Requiring Confirmation") ---------------- */
+function renderFaq(){
+  document.getElementById('faqLockBar').innerHTML = lockBar('faq', t('faq_title'));
+  wireLockBar('faq', renderFaq);
+  const unlocked = state.unlocked.faq;
+  const rows = state.faqDocuments.map((r,i) => `
+    <tr data-ri="${i}">
+      <td><input type="text" data-k="name" ${unlocked?'':'disabled'} value="${escapeAttr(r.name)}"></td>
+      <td><input type="url" data-k="url" ${unlocked?'':'disabled'} value="${escapeAttr(r.url)}"></td>
+      <td class="rm-cell">${unlocked ? `<button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button>` : ''}</td>
+    </tr>`).join('');
+  const wrap = document.getElementById('tbl-faq');
+  wrap.innerHTML = `<table class="rep"><thead><tr>
+      <th>${t('col_faq_name')}</th><th>${t('col_faq_url')}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>` +
+    (unlocked ? `<button type="button" class="btn small addrow" id="faq-add-btn"><span class="addrow-icon">+</span><span>${t('add_faq_btn')}</span></button>` : '');
+  if(unlocked){
+    wrap.querySelector('#faq-add-btn').onclick = ()=>{
+      state.faqDocuments.push({_id:uid(), name:'', url:''});
+      renderFaq(); scheduleAutosave();
+    };
+    wrap.querySelectorAll('input[data-k]').forEach(inp=>{
+      const ri = +inp.closest('tr').dataset.ri;
+      inp.oninput = ()=>{ state.faqDocuments[ri][inp.dataset.k] = inp.value; scheduleAutosave(); };
+    });
+    wrap.querySelectorAll('.rm').forEach(b=>{
+      b.onclick = ()=>{
+        showGenericConfirm(t('delete_row_confirm'), ()=>{
+          state.faqDocuments.splice(+b.dataset.ri,1); renderFaq(); scheduleAutosave();
+        });
+      };
+    });
+  }
+}
+
 /* ---------------- Excel export (client-side snapshot, unrelated to autosave/Submit) ---------------- */
 document.getElementById('exportExcelBtn').onclick = function(){
   const wb = XLSX.utils.book_new();
@@ -525,9 +642,11 @@ const NAV_ITEMS = [
   { id:'scenarios', labelKey:'nav_scenarios' },
   { id:'welcome', labelKey:'nav_welcome' },
   { id:'kms', labelKey:'nav_kms' },
+  { id:'faq', labelKey:'nav_faq' },
 ];
 function visibleNavItems(){
-  return NAV_ITEMS.filter(item => item.id!=='kms' || showKms());
+  const planTabs = planVisibleTabIds();
+  return NAV_ITEMS.filter(item => planTabs.includes(item.id) && (item.id!=='kms' || showKms()));
 }
 function renderSidebar(){
   document.getElementById('avaSidebar').innerHTML = '<div class="nav-group-label">'+t('nav_group_label')+'</div>' +
@@ -550,6 +669,7 @@ function renderActivePanel(){
   else if(activePanel==='scenarios') renderScenarios();
   else if(activePanel==='welcome') renderWelcome();
   else if(activePanel==='kms') renderKms();
+  else if(activePanel==='faq') renderFaq();
 }
 
 function applyStaticText(){
@@ -569,6 +689,8 @@ function applyStaticText(){
   document.getElementById('tKmsDesc').textContent = t('kms_desc');
   document.getElementById('tKmsRefTitle').textContent = t('kms_ref_title');
   document.getElementById('tKmsUserListTitle').textContent = t('kms_userlist_title');
+  document.getElementById('tFaqTitle').textContent = t('faq_title');
+  document.getElementById('tFaqDesc').textContent = t('faq_desc');
 }
 function applyUiLanguage(){
   if(welcomeIsDefault) state.welcome = defaultWelcome(PROJECT_NAME, uiLang);
@@ -662,6 +784,7 @@ async function saveToSupabase(){
   if(!avaOwnsKms()){
     ops.push(...diffRepeater(prev.kmsUsers, cur.kmsUsers, 'web_portal_users', r=>({project_id:PROJECT_ID, email:r.email, username:r.username, kms_level:r.kmsLevel, portal_level:r.portalLevel||'Level-1', is_admin:!!r.isAdmin})));
   }
+  ops.push(...diffRepeater(prev.faqDocuments, cur.faqDocuments, 'aca_faq_documents', r=>({project_id:PROJECT_ID, name:r.name, url:r.url})));
   await Promise.all(ops);
   lastSynced = cur;
 }
@@ -744,16 +867,17 @@ async function seedDefaultsIfEmpty(){
 async function loadFromSupabase(){
   if(!PROJECT_ID){ markSaved('no-id'); showBanner('banner_no_project'); return; }
   isHydrating = true;
-  let projRes, deptRes, scenRes, welcomeRes, kmsRes;
+  let projRes, deptRes, scenRes, welcomeRes, kmsRes, faqRes;
   try{
-    [projRes, deptRes, scenRes, welcomeRes, kmsRes] = await Promise.all([
-      sb.from('projects').select('id,name,products').eq('id', PROJECT_ID).maybeSingle(),
+    [projRes, deptRes, scenRes, welcomeRes, kmsRes, faqRes] = await Promise.all([
+      sb.from('projects').select('id,name,products,aca_plan').eq('id', PROJECT_ID).maybeSingle(),
       sb.from('aca_transfer_departments').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
       sb.from('aca_transfer_scenarios').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
       sb.from('aca_welcome_messages').select('*').eq('project_id', PROJECT_ID).maybeSingle(),
       sb.from('web_portal_users').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
+      sb.from('aca_faq_documents').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
     ]);
-    [projRes, deptRes, scenRes, welcomeRes, kmsRes].forEach(r=>{ if(r.error) throw r.error; });
+    [projRes, deptRes, scenRes, welcomeRes, kmsRes, faqRes].forEach(r=>{ if(r.error) throw r.error; });
   }catch(e){
     console.error('loadFromSupabase failed', e);
     markSaved('error'); showBanner('banner_connection_error');
@@ -764,6 +888,7 @@ async function loadFromSupabase(){
   } else {
     PROJECT_NAME = projRes.data.name;
     PRODUCTS = projRes.data.products || [];
+    ACA_PLAN = projRes.data.aca_plan || 'Original';
   }
   renderBrandSub();
 
@@ -786,12 +911,17 @@ async function loadFromSupabase(){
 
   state.kmsUsers = (kmsRes.data||[]).map(r=>({ _id:r.id, email:r.email||'', username:r.username||'', kmsLevel:r.kms_level||'Publish', portalLevel:r.portal_level||'Level-1', isAdmin:!!r.is_admin }));
 
+  const dbFaq = faqRes.data || [];
+  state.faqDocuments = dbFaq.length ? dbFaq.map(r=>({ _id:r.id, name:r.name||'', url:r.url||'' })) : defaultState().faqDocuments;
+
   lastSynced = snapshot(state);
-  // PRODUCTS is only known after this load resolves, so showKms() may flip the KMS tab's
-  // visibility compared to the pre-load render - refresh the sidebar now, and bail out of the
-  // KMS panel if it's no longer visible (shouldn't normally happen since activePanel starts on
-  // 'departments', but guards against a stale deep-link/hash landing straight on 'kms').
-  if(activePanel==='kms' && !showKms()) activePanel = 'departments';
+  // PRODUCTS and ACA_PLAN are only known after this load resolves, so showKms()/planVisibleTabIds()
+  // may flip a tab's visibility compared to the pre-load render (not just KMS anymore, now that the
+  // plan can also hide 'scenarios' or 'kms', or show 'faq') - refresh the sidebar now, and fall back
+  // to 'departments' (visible under every plan) if activePanel is no longer in the visible set
+  // (shouldn't normally happen since activePanel starts on 'departments', but guards against a
+  // stale deep-link landing straight on a tab this plan/product combo doesn't show).
+  if(!visibleNavItems().some(item=>item.id===activePanel)) activePanel = 'departments';
   renderSidebar();
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   const target = document.getElementById('panel-'+activePanel);
