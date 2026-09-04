@@ -77,6 +77,28 @@
   AVA basic settings 有沒有現成的可以照抄，不要自創一套。KMS 分頁的「KMS 權限等級參考」表格內容
   （Publish/Edit 說明文字）也是直接搬 AVA basic settings 的 `KMS_PERMISSION_DETAIL`，兩邊如果之後
   要改權限說明文字記得兩邊一起改（目前沒有共用成同一個檔案）。
+- **分頁架構與方案顯示邏輯**（2026-09-04 新增）：表單固定有 5 個分頁定義在 `NAV_ITEMS`——
+  1 轉接部門設定（`departments`）、2 轉接情境設定（`scenarios`）、3 歡迎詞（`welcome`）、
+  4 KMS 權限設定（`kms`）、5 知識庫 FAQ（`faq`，新增）。實際顯示哪幾個分頁由 `ACA_PLAN_TABS`
+  常數 + `planVisibleTabIds()` 決定：`Original` 顯示 1,2,3,4（跟改版前的表單一樣）、
+  `SuperLite` 顯示 1,3,5、`SuperPro` 顯示 1,2,3,5。`ACA_PLAN` 這個模組變數在
+  `loadFromSupabase()` 裡讀 `projects.aca_plan`（`hotel-dashboard` 那邊維護、寫入，這個表單對
+  它是唯讀，未知/空值一律當 `'Original'` 處理）。`visibleNavItems()` 同時套用
+  `planVisibleTabIds()` 跟既有的 `showKms()`（KMS 分頁即使方案有排到，專案沒掛 `KMS` 標籤一樣
+  隱藏）；`loadFromSupabase()` 收尾時如果目前 `activePanel` 不在可見清單內會退回 `departments`
+  （取代原本只針對 kms 的特判）。
+- **知識庫 FAQ 分頁**（`panel-faq`）：架構完全比照 AVA basic settings 的「其他需確認項目」
+  （`pending-items`）——文件名稱＋連結兩欄的表格，資料存在新表 `aca_faq_documents`（欄位形狀
+  比照 `aca_transfer_departments`／`aca_transfer_scenarios`：`id` 由前端 `uid()` 明確帶入、
+  `project_id` 沒有實際 FK constraint、標準兩條 RLS policy），透過 `diffRepeater()` 同步。
+  只有標題／說明文字換成「知識庫 FAQ」，其餘表格互動、確認刪除彈窗都是同一套。
+- **PIN 編輯鎖**（`lockBar()`/`wireLockBar()`，2026-09-04 首次從 AVA basic settings 移植進
+  這個表單）：飯店端預設唯讀，輸入 PIN（`"aiello2026"`，跟 AVA basic settings 同一組）解鎖後
+  才能新增/編輯/刪除列，解鎖狀態存在 `state.unlocked.faq`（會隨自動存檔一起寫進 DB 的
+  `state` JSON，重新整理後維持解鎖）。CSS 沿用 AVA 的 `.lockbar` 系列樣式，唯一差異是顏色變數
+  代換成這個表單自己定義的 `var(--ava-text)`（AVA 原始碼裡用的 `var(--text)` 在它自己的
+  `:root` 沒有定義，屬於死變數，移植時沒有照抄）。目前只有知識庫 FAQ 這個分頁用到這套鎖，之後
+  如果其他分頁也要加編輯鎖，直接複用這兩個函式即可。
 
 ## 尚未完成的事（Jim 之後要做的）
 
@@ -93,6 +115,9 @@
    下次動這塊之前先去 hotel-dashboard 確認目前 UI 選項清單的實際狀態，不要照舊假設「目前只有
    AVA/GW/KMS/TMSP」重複做一次。專案總覽頁加上這個表單的連結產生按鈕（比照 SiteChat Settings 當初
    的做法）這件事本身還沒做。
+
+6. ~~新增 `aca_faq_documents` 表~~ 已完成（2026-09-04，透過 Supabase MCP apply_migration）：
+   知識庫 FAQ 分頁背後的表，欄位形狀、RLS 都比照 `aca_transfer_departments`。
 
 ## 硬規則
 
