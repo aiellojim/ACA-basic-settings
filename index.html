@@ -55,6 +55,13 @@
   table.rep .rm svg{display:block;}
   table.rep .rm:hover{background:#fef2f2;border-color:#fecaca;}
   table.rep td.rm-cell{padding-left:12px;text-align:center;width:36px;}
+  /* 開啟連結按鈕（比照 AVA basic settings 的 renderRepeater type:"url" 欄位樣式，直接搬過來，
+     顏色變數換成這個表單自己的 --ava-* 系列）。 */
+  .icon-btn{padding:0;flex-shrink:0;color:var(--ava-text-light);}
+  .icon-btn:hover{color:var(--ava-primary);border-color:var(--ava-primary);}
+  .icon-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .field-with-icon{display:flex;gap:6px;align-items:center;}
+  .field-with-icon input{flex:1;min-width:0;}
   .addrow{margin-top:10px;gap:6px;}
   .addrow-icon{font-size:16px;line-height:1;font-weight:700;}
   .reftable{width:100%;border-collapse:collapse;font-size:var(--fs);margin-top:4px;overflow:hidden;border-radius:8px;}
@@ -178,6 +185,7 @@ const uid = () => crypto.randomUUID();
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s); }
 const RM_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+const LINK_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
 
 const HANDLING_OPTIONS = [
   { v:'transfer_human', en:'Transfer to human', zh:'轉接人工', ja:'担当者に転送' },
@@ -329,6 +337,7 @@ const UI_STRINGS = {
   col_faq_name:{ en:'Document Name', zh:'文件名稱', ja:'文書名' },
   col_faq_url:{ en:'Link', zh:'連結', ja:'リンク' },
   add_faq_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
+  open_link_title:{ en:'Open Link', zh:'開啟連結', ja:'リンクを開く' },
   // Ported from AVA basic settings' lockBar() (2026-09-04) - same "protect sheet" style PIN lock,
   // same PIN, just rebuilt around ACA's t()/UI_STRINGS system instead of AVA's T()/pick(). {title}
   // is replaced with the caller's already-localized section title in lockBar() below.
@@ -592,12 +601,17 @@ function renderFaq(){
   document.getElementById('faqLockBar').innerHTML = lockBar('faq', t('faq_title'));
   wireLockBar('faq', renderFaq);
   const unlocked = state.unlocked.faq;
-  const rows = state.faqDocuments.map((r,i) => `
+  const rows = state.faqDocuments.map((r,i) => {
+    const hasUrl = !!String(r.url||'').trim();
+    return `
     <tr data-ri="${i}">
       <td><input type="text" data-k="name" ${unlocked?'':'disabled'} value="${escapeAttr(r.name)}"></td>
-      <td><input type="url" data-k="url" ${unlocked?'':'disabled'} value="${escapeAttr(r.url)}"></td>
+      <td><div class="field-with-icon"><input type="text" data-k="url" ${unlocked?'':'disabled'} value="${escapeAttr(r.url)}">
+        <button type="button" class="btn icon-btn faq-url-open" data-ri="${i}" title="${escapeAttr(t('open_link_title'))}" style="height:var(--ctrl-h-sm);width:var(--ctrl-h-sm);" ${hasUrl?'':'disabled'}>${LINK_ICON_SVG}</button>
+      </div></td>
       <td class="rm-cell">${unlocked ? `<button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button>` : ''}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   const wrap = document.getElementById('tbl-faq');
   wrap.innerHTML = `<table class="rep"><thead><tr>
       <th>${t('col_faq_name')}</th><th>${t('col_faq_url')}</th><th></th>
@@ -610,7 +624,15 @@ function renderFaq(){
     };
     wrap.querySelectorAll('input[data-k]').forEach(inp=>{
       const ri = +inp.closest('tr').dataset.ri;
-      inp.oninput = ()=>{ state.faqDocuments[ri][inp.dataset.k] = inp.value; scheduleAutosave(); };
+      inp.oninput = ()=>{
+        state.faqDocuments[ri][inp.dataset.k] = inp.value; scheduleAutosave();
+        // 比照 AVA basic settings renderRepeater 的 url 欄位：打字時即時切換旁邊開啟連結按鈕的
+        // disabled 狀態，不整表重繪（整表重繪會讓輸入中的欄位失焦，2026-07-22 那次教訓）。
+        if(inp.dataset.k === 'url'){
+          const openBtn = inp.parentElement && inp.parentElement.querySelector('.faq-url-open[data-ri="'+ri+'"]');
+          if(openBtn) openBtn.disabled = !String(inp.value||'').trim();
+        }
+      };
     });
     wrap.querySelectorAll('.rm').forEach(b=>{
       b.onclick = ()=>{
@@ -620,6 +642,17 @@ function renderFaq(){
       };
     });
   }
+  // 開啟連結按鈕刻意不受編輯鎖影響——鎖定（唯讀）狀態下飯店端還是要能點開連結查看內容，只是
+  // 不能編輯文字本身（比照 AVA basic settings renderRepeater 的 url 欄位：locked 只 disable
+  // input，不影響這顆按鈕）。
+  wrap.querySelectorAll('.faq-url-open').forEach(btn=>{
+    btn.onclick = ()=>{
+      const ri = +btn.dataset.ri;
+      const url = String((state.faqDocuments[ri] && state.faqDocuments[ri].url) || '').trim();
+      if(!url) return;
+      window.open(/^https?:\/\//i.test(url) ? url : 'https://'+url, '_blank', 'noopener');
+    };
+  });
 }
 
 /* ---------------- Excel export (client-side snapshot, unrelated to autosave/Submit) ---------------- */
