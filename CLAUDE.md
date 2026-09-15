@@ -105,6 +105,13 @@
   `:root` 沒有定義，屬於死變數，移植時沒有照抄）。目前只有知識庫 FAQ 這個分頁用到這套鎖，之後
   如果其他分頁也要加編輯鎖，直接複用這兩個函式即可。
 
+- **2026-09-15**：`loadFromSupabase()` 原本 `aca_faq_documents` 沒資料時，會在拍 `lastSynced` 快照
+  *之前*就把 `defaultState().faqDocuments`（純前端產生的一筆空白示範列）塞進 `state`，導致這筆列被
+  誤判成「已經存過」，之後編輯它送出的其實是更新一筆不存在資料列的 UPDATE（靜默無效果）——是 AVA UI
+  settings 同一天實際發生資料遺失事故的同一類地雷（見 `aiello-forms-spec.md` 第 4 節），已修正為
+  `lastSynced` 先用真實 DB 現況拍照、示範列在快照*之後*才套用。這裡沒有子表外鍵依賴，影響範圍比
+  Showcase 小很多，但邏輯上是同一個坑。還原點 `pre-friendly-defaults-lastsynced-fix-2026-09-15`。
+
 ## 尚未完成的事（Jim 之後要做的）
 
 1. ~~在本機建立這個 repo~~ 已完成：`git init` + GitHub repo `aiellojim/ACA-basic-settings` + push。

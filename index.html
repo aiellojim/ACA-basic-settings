@@ -954,9 +954,15 @@ async function loadFromSupabase(){
   state.kmsUsers = (kmsRes.data||[]).map(r=>({ _id:r.id, email:r.email||'', username:r.username||'', kmsLevel:r.kms_level||'Publish', portalLevel:r.portal_level||'Level-1', isAdmin:!!r.is_admin }));
 
   const dbFaq = faqRes.data || [];
-  state.faqDocuments = dbFaq.length ? dbFaq.map(r=>({ _id:r.id, name:r.name||'', url:r.url||'' })) : defaultState().faqDocuments;
+  state.faqDocuments = dbFaq.map(r=>({ _id:r.id, name:r.name||'', url:r.url||'' }));
 
   lastSynced = snapshot(state);
+  // 2026-09-15 bug fix（AVA UI settings 實測撞到同一個坑，見 aiello-forms-spec.md 第 4 節）：範例空白列
+  // 只能在拍完 lastSynced 快照*之後*才套用進 state，不能在快照之前——這筆純前端產生、資料庫裡不存在的
+  // 列如果在快照之前就塞進 state，會被 diffRepeater 永遠誤判成「已經存過」，之後編輯它送出的其實是一筆
+  // 更新不存在資料列的 UPDATE（靜默無效果，不會報錯也不會真的存進去）。這裡風險比 Showcase 那種有子表
+  // 外鍵依賴的情況小（aca_faq_documents 沒有子表），但同一個地雷不該留著。
+  if(!state.faqDocuments.length) state.faqDocuments = defaultState().faqDocuments;
   // PRODUCTS and ACA_PLAN are only known after this load resolves, so showKms()/planVisibleTabIds()
   // may flip a tab's visibility compared to the pre-load render (not just KMS anymore, now that the
   // plan can also hide 'scenarios' or 'kms', or show 'faq') - refresh the sidebar now, and fall back
