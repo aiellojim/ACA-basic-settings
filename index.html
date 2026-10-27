@@ -117,6 +117,14 @@
       <div id="panel-departments" class="panel">
         <h1 id="tDeptTitle">Transfer Departments</h1>
         <p class="panel-sub" id="tDeptDesc">Define each department's extension and call-log notification email for this organization. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab.</p>
+        <!-- 轉接目的地忙線處理（2026-10-27）：此分頁本來就只在 Original / SuperPro 顯示，不需另外判斷方案 -->
+        <div class="card">
+          <h3 id="tBusyCardTitle">When the Transfer Destination Is Busy</h3>
+          <div class="note" id="tBusyNote"></div>
+          <label id="tBusyQ" for="busyHandling" style="display:block;margin-bottom:6px;"></label>
+          <textarea id="busyHandling" rows="3" style="width:100%;box-sizing:border-box;border:1px solid var(--ava-border);border-radius:8px;padding:10px;font-size:var(--fs);font-family:inherit;margin-bottom:12px;"></textarea>
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="busyConfirmed"><span id="tBusyConfirm"></span></label>
+        </div>
         <div class="card">
           <h3 id="tDeptCardTitle">Departments</h3>
           <div id="tbl-departments"></div>
@@ -141,6 +149,18 @@
             <button type="button" class="btn small" id="restoreWelcomeBtn">Restore Default</button>
           </div>
           <textarea id="welcomeTextarea" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--ava-border);border-radius:8px;padding:10px;font-size:var(--fs);font-family:inherit;"></textarea>
+        </div>
+        <!-- 內線接聽設備（2026-10-27）：只有 projects.aca_call_scope 為 internal / both 才顯示，見 showInternalCall() -->
+        <div class="card" id="cardInternalCall" style="display:none;">
+          <h3 id="tIntCallCardTitle">Internal Call Device</h3>
+          <p id="tIntCallQ" style="margin:0 0 12px;line-height:1.6;"></p>
+          <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px;">
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="intSpk" value="supported"><span id="tIntSpkYes"></span></label>
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="intSpk" value="unsupported"><span id="tIntSpkNo"></span></label>
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="intSpk" value="tbd"><span id="tIntSpkTbd"></span></label>
+          </div>
+          <label id="tIntSpkNoteLabel" for="intSpkNote" style="display:block;margin-bottom:6px;color:var(--ava-text-light);"></label>
+          <textarea id="intSpkNote" rows="2" style="width:100%;box-sizing:border-box;border:1px solid var(--ava-border);border-radius:8px;padding:10px;font-size:var(--fs);font-family:inherit;"></textarea>
         </div>
       </div>
 
@@ -243,6 +263,9 @@ function defaultState(){
     welcome: defaultWelcome('', uiLang),
     kmsUsers: [],
     faqDocuments: [ {_id:uid(), name:'', url:''} ],
+    // 2026-10-27：存在 aca_welcome_messages 同一列（不新增資料表）。speakerphone 存代碼 supported / unsupported / tbd，
+    // 空字串 = 尚未回答。預設值就是資料庫真實現況（沒有「友善預設列」），所以可以安全進 lastSynced 快照。
+    callSettings: { speakerphone:'', speakerphoneNote:'', busyHandling:'', busyPbxConfirmed:false },
     unlocked: { faq:false },
   };
 }
@@ -274,6 +297,10 @@ const ACA_PLAN_TABS = {
   SuperPro:  ['departments','scenarios','welcome','faq'],
 };
 let ACA_PLAN = 'Original';
+// projects.aca_call_scope（hotel-dashboard 維護、這裡唯讀）：internal / external / both，空字串 = 未設定。
+// 只有 internal / both 才顯示「內線接聽設備」卡片；比對的是代碼，不是顯示文字。
+let ACA_CALL_SCOPE = '';
+function showInternalCall(){ return ACA_CALL_SCOPE==='internal' || ACA_CALL_SCOPE==='both'; }
 function planVisibleTabIds(){ return ACA_PLAN_TABS[ACA_PLAN] || ACA_PLAN_TABS.Original; }
 // Read-only-mirror-vs-editable ownership (Jim, 2026-08-27): AVA basic settings is the primary
 // editor for web_portal_users whenever ITS OWN "基礎設定" link would also show a KMS panel for
@@ -303,7 +330,7 @@ const UI_STRINGS = {
   nav_group_label:{ en:'Form Sections', zh:'表單分頁', ja:'フォーム項目' },
   nav_departments:{ en:'Transfer Departments', zh:'轉接部門設定', ja:'転送部署設定' },
   nav_scenarios:{ en:'Transfer Scenarios', zh:'轉接情境設定', ja:'転送シナリオ設定' },
-  nav_welcome:{ en:'Welcome Message', zh:'歡迎詞', ja:'ウェルカムメッセージ' },
+  nav_welcome:{ en:'Call Answering', zh:'接聽設定', ja:'着信応対設定' },
   nav_kms:{ en:'KMS Permissions', zh:'KMS 權限設定', ja:'KMS権限設定' },
   dept_title:{ en:'Transfer Departments', zh:'指定轉接部門', ja:'転送部署の指定' },
   dept_desc:{ en:"Define each department's extension and call-log notification email for this organization. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab.", zh:'定義此組織各部門的分機與通話記錄 Email，填寫後「轉接情境設定」分頁的對應欄位可直接下拉選取。', ja:'この組織の各部署の内線と通話記録の通知先メールを設定します。入力すると、「転送シナリオ設定」タブの該当項目でドロップダウンから選択できます。' },
@@ -339,6 +366,20 @@ const UI_STRINGS = {
   nav_faq:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
   faq_title:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
   faq_desc:{ en:"Documents and links related to this organization's knowledge base FAQ.", zh:'此組織知識庫 FAQ 相關的文件與連結。', ja:'この組織のナレッジベースFAQに関する資料およびリンクです。' },
+  callans_title:{ en:'Call Answering', zh:'接聽設定', ja:'着信応対設定' },
+  callans_desc:{ en:"Set the opening greeting the AI agent uses when answering, and the conditions of the device that answers internal calls.", zh:'設定 AI 客服接聽時的開場歡迎詞，以及內線接聽設備的條件。', ja:'AIエージェントが応答する際の冒頭の挨拶と、内線に応答する機器の条件を設定します。' },
+  intcall_title:{ en:'Internal Call Device', zh:'內線接聽設備', ja:'内線応答機器' },
+  intcall_q:{ en:'Does the device that answers internal calls (a phone or other hardware) support speakerphone (hands-free)?', zh:'接聽內線電話的設備（話機或其他硬體）是否支援擴音（免持通話）？', ja:'内線通話に応答する機器（電話機またはその他のハードウェア）は、スピーカーフォン（ハンズフリー）に対応していますか？' },
+  intcall_yes:{ en:'Supported', zh:'支援', ja:'対応している' },
+  intcall_no:{ en:'Not supported', zh:'不支援', ja:'対応していない' },
+  intcall_tbd:{ en:'To be confirmed', zh:'待確認', ja:'確認中' },
+  intcall_note_label:{ en:'Notes', zh:'備註', ja:'備考' },
+  intcall_note_ph:{ en:'e.g. device model, known limitations', zh:'例：設備型號、已知限制', ja:'例：型番、既知の制限' },
+  busy_title:{ en:'When the Transfer Destination Is Busy', zh:'轉接目的地忙線時的處理方式', ja:'転送先が話中の場合の処理' },
+  busy_note:{ en:'When ACA transfers a call and the destination is busy, what happens next is determined by the PBX configuration. Please ask your PBX vendor or maintainer to set this up, and briefly describe the expected handling below.', zh:'ACA 執行轉接時，若轉接目的地忙線，後續如何處理取決於交換機（PBX）端的設定，需請貴飯店的交換機廠商或維護單位協助設定。請於下方簡述預期的處理方式。', ja:'ACA が通話を転送する際、転送先が話中の場合の処理は交換機（PBX）側の設定によります。交換機の業者または保守担当者に設定をご依頼のうえ、想定する処理方法を下記にご記入ください。' },
+  busy_q:{ en:'How is the PBX expected to handle a call when the transfer destination is busy?', zh:'轉接目的地忙線時，PBX 端預期如何處理？', ja:'転送先が話中の場合、PBX 側ではどのように処理される想定ですか？' },
+  busy_ph:{ en:'e.g. forward to backup extension xxxx / voicemail / keep ringing', zh:'例：轉接至備援分機 xxxx／轉語音信箱／持續響鈴', ja:'例：予備の内線 xxxx へ転送／留守番電話／呼び出しを継続' },
+  busy_confirm:{ en:'Confirmed with the PBX side that this handling can be configured', zh:'已與交換機端確認此處理方式可行', ja:'この処理方法が設定可能であることを交換機側に確認済み' },
   col_faq_name:{ en:'Document Name', zh:'文件名稱', ja:'文書名' },
   col_faq_url:{ en:'Link', zh:'連結', ja:'リンク' },
   add_faq_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
@@ -554,7 +595,16 @@ function renderScenarios(){
 }
 
 /* ---------------- Welcome ---------------- */
-function renderWelcome(){ document.getElementById('welcomeTextarea').value = state.welcome || ''; }
+function renderWelcome(){
+  document.getElementById('welcomeTextarea').value = state.welcome || '';
+  document.getElementById('cardInternalCall').style.display = showInternalCall() ? '' : 'none';
+  document.querySelectorAll('input[name=intSpk]').forEach(r=>{ r.checked = (r.value === state.callSettings.speakerphone); });
+  document.getElementById('intSpkNote').value = state.callSettings.speakerphoneNote || '';
+}
+function renderBusyCard(){
+  document.getElementById('busyHandling').value = state.callSettings.busyHandling || '';
+  document.getElementById('busyConfirmed').checked = !!state.callSettings.busyPbxConfirmed;
+}
 
 /* ---------------- KMS (shared web_portal_users table, AVA is primary editor when present) ---------------- */
 function renderKmsRefTable(){
@@ -671,6 +721,14 @@ document.getElementById('exportExcelBtn').onclick = function(){
     return { Scenario:r.name, Handling: handlingLabel(r.handling,'en'), Department: r.dept, Extension: md ? md.ext : r.ext, Email:r.email };
   })), 'Scenarios');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ 'Welcome Message': state.welcome }]), 'Welcome Message');
+  const cs = state.callSettings;
+  const spkLabel = { supported:'Supported', unsupported:'Not supported', tbd:'To be confirmed' }[cs.speakerphone] || '';
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+    'Internal Call Device Speakerphone': showInternalCall() ? spkLabel : '(n/a)',
+    'Internal Call Device Notes': cs.speakerphoneNote,
+    'PBX Handling When Transfer Destination Is Busy': cs.busyHandling,
+    'Confirmed With PBX Side': cs.busyPbxConfirmed ? 'Yes' : 'No',
+  }]), 'Call Settings');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.kmsUsers.map(r=>({
     Email:r.email, UserID:r.username, 'Permission Level':r.kmsLevel,
   }))), 'KMS Users');
@@ -707,7 +765,7 @@ window.switchPanel = function(id){
   document.getElementById('avaSidebar').classList.remove('open');
 };
 function renderActivePanel(){
-  if(activePanel==='departments') renderDepartments();
+  if(activePanel==='departments'){ renderBusyCard(); renderDepartments(); }
   else if(activePanel==='scenarios') renderScenarios();
   else if(activePanel==='welcome') renderWelcome();
   else if(activePanel==='kms') renderKms();
@@ -723,10 +781,22 @@ function applyStaticText(){
   document.getElementById('tScenTitle').textContent = t('scen_title');
   document.getElementById('tScenDesc').textContent = t('scen_desc');
   document.getElementById('tScenCardTitle').textContent = t('scen_card_title');
-  document.getElementById('tWelcomeTitle').textContent = t('welcome_title');
-  document.getElementById('tWelcomeDesc').textContent = t('welcome_desc');
+  document.getElementById('tWelcomeTitle').textContent = t('callans_title');
+  document.getElementById('tWelcomeDesc').textContent = t('callans_desc');
   document.getElementById('tWelcomeCardTitle').textContent = t('welcome_title');
   document.getElementById('restoreWelcomeBtn').textContent = t('restore_default_btn');
+  document.getElementById('tIntCallCardTitle').textContent = t('intcall_title');
+  document.getElementById('tIntCallQ').textContent = t('intcall_q');
+  document.getElementById('tIntSpkYes').textContent = t('intcall_yes');
+  document.getElementById('tIntSpkNo').textContent = t('intcall_no');
+  document.getElementById('tIntSpkTbd').textContent = t('intcall_tbd');
+  document.getElementById('tIntSpkNoteLabel').textContent = t('intcall_note_label');
+  document.getElementById('intSpkNote').placeholder = t('intcall_note_ph');
+  document.getElementById('tBusyCardTitle').textContent = t('busy_title');
+  document.getElementById('tBusyNote').textContent = t('busy_note');
+  document.getElementById('tBusyQ').textContent = t('busy_q');
+  document.getElementById('busyHandling').placeholder = t('busy_ph');
+  document.getElementById('tBusyConfirm').textContent = t('busy_confirm');
   document.getElementById('tKmsTitle').textContent = t('kms_title');
   document.getElementById('tKmsDesc').textContent = t('kms_desc');
   document.getElementById('tKmsRefTitle').textContent = t('kms_ref_title');
@@ -823,6 +893,16 @@ async function saveToSupabase(){
   if(prev.welcome !== cur.welcome){
     ops.push(sb.from('aca_welcome_messages').upsert({project_id:PROJECT_ID, welcome:cur.welcome}, {onConflict:'project_id'}).throwOnError());
   }
+  // 2026-10-27：通話設定與歡迎詞同一列（aca_welcome_messages）；upsert 只帶這幾個欄位，
+  // PostgREST merge-duplicates 只更新有帶的欄位，不會蓋掉 welcome。
+  if(JSON.stringify(prev.callSettings) !== JSON.stringify(cur.callSettings)){
+    const c = cur.callSettings;
+    ops.push(sb.from('aca_welcome_messages').upsert({
+      project_id:PROJECT_ID,
+      internal_speakerphone:c.speakerphone, internal_speakerphone_note:c.speakerphoneNote,
+      transfer_busy_handling:c.busyHandling, transfer_busy_pbx_confirmed:!!c.busyPbxConfirmed,
+    }, {onConflict:'project_id'}).throwOnError());
+  }
   if(!avaOwnsKms()){
     ops.push(...diffRepeater(prev.kmsUsers, cur.kmsUsers, 'web_portal_users', r=>({project_id:PROJECT_ID, email:r.email, username:r.username, kms_level:r.kmsLevel, portal_level:r.portalLevel||'Level-1', is_admin:!!r.isAdmin})));
   }
@@ -912,7 +992,7 @@ async function loadFromSupabase(){
   let projRes, deptRes, scenRes, welcomeRes, kmsRes, faqRes;
   try{
     [projRes, deptRes, scenRes, welcomeRes, kmsRes, faqRes] = await Promise.all([
-      sb.from('projects').select('id,name,products,aca_plan').eq('id', PROJECT_ID).maybeSingle(),
+      sb.from('projects').select('id,name,products,aca_plan,aca_call_scope').eq('id', PROJECT_ID).maybeSingle(),
       sb.from('aca_transfer_departments').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
       sb.from('aca_transfer_scenarios').select('*').eq('project_id', PROJECT_ID).order('sort_order'),
       sb.from('aca_welcome_messages').select('*').eq('project_id', PROJECT_ID).maybeSingle(),
@@ -931,6 +1011,7 @@ async function loadFromSupabase(){
     PROJECT_NAME = projRes.data.name;
     PRODUCTS = projRes.data.products || [];
     ACA_PLAN = projRes.data.aca_plan || 'Original';
+    ACA_CALL_SCOPE = projRes.data.aca_call_scope || '';
   }
   renderBrandSub();
 
@@ -950,6 +1031,14 @@ async function loadFromSupabase(){
     state.welcome = defaultWelcome(PROJECT_NAME, uiLang);
     welcomeIsDefault = true;
   }
+
+  const wRow = welcomeRes.data || {};
+  state.callSettings = {
+    speakerphone: wRow.internal_speakerphone || '',
+    speakerphoneNote: wRow.internal_speakerphone_note || '',
+    busyHandling: wRow.transfer_busy_handling || '',
+    busyPbxConfirmed: !!wRow.transfer_busy_pbx_confirmed,
+  };
 
   state.kmsUsers = (kmsRes.data||[]).map(r=>({ _id:r.id, email:r.email||'', username:r.username||'', kmsLevel:r.kms_level||'Publish', portalLevel:r.portal_level||'Level-1', isAdmin:!!r.is_admin }));
 
@@ -984,6 +1073,10 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('uiLangSelect').value = uiLang;
   document.getElementById('uiLangSelect').onchange = e=>{ uiLang = e.target.value; applyUiLanguage(); };
   document.getElementById('welcomeTextarea').oninput = e=>{ state.welcome = e.target.value; welcomeIsDefault = false; scheduleAutosave(); };
+  document.querySelectorAll('input[name=intSpk]').forEach(r=>{ r.onchange = ()=>{ if(r.checked){ state.callSettings.speakerphone = r.value; scheduleAutosave(); } }; });
+  document.getElementById('intSpkNote').oninput = e=>{ state.callSettings.speakerphoneNote = e.target.value; scheduleAutosave(); };
+  document.getElementById('busyHandling').oninput = e=>{ state.callSettings.busyHandling = e.target.value; scheduleAutosave(); };
+  document.getElementById('busyConfirmed').onchange = e=>{ state.callSettings.busyPbxConfirmed = e.target.checked; scheduleAutosave(); };
   document.getElementById('restoreWelcomeBtn').onclick = ()=>{
     welcomeIsDefault = true;
     state.welcome = defaultWelcome(PROJECT_NAME, uiLang);

@@ -112,6 +112,23 @@
   `lastSynced` 先用真實 DB 現況拍照、示範列在快照*之後*才套用。這裡沒有子表外鍵依賴，影響範圍比
   Showcase 小很多，但邏輯上是同一個坑。還原點 `pre-friendly-defaults-lastsynced-fix-2026-09-15`。
 
+- **2026-10-27：接聽設定（原「歡迎詞」）分頁與通話設定欄位**。分頁代碼仍是 `welcome`，顯示名稱改為
+  「接聽設定／Call Answering／着信応対設定」（`nav_welcome`、`callans_title`），歡迎詞卡片標題仍用
+  `welcome_title`。新增兩組題目，資料都放在既有 singleton 表 `aca_welcome_messages` 的新欄位
+  （**不新增資料表**，避免擴大 anon `USING(true)` policy 的表數量），`state.callSettings` 對應：
+  - **內線接聽設備**（接聽設定分頁，`cardInternalCall`）：擴音支援單選 `internal_speakerphone`
+    （代碼 `supported`／`unsupported`／`tbd`，空字串＝未回答）＋備註 `internal_speakerphone_note`。
+    **顯示條件**：`showInternalCall()`＝`projects.aca_call_scope` 為 `internal` 或 `both`（hotel-dashboard
+    「處理通話」下拉維護，這裡唯讀，比對的是**代碼**不是中文）；空值或 `external` 整張卡片隱藏。
+    不看方案（Original／SuperLite／SuperPro 都適用）。
+  - **轉接目的地忙線處理**（轉接部門設定分頁頂端）：簡答 `transfer_busy_handling`（刻意不給固定選項，
+    不同飯店交換機處理方式差異大）＋勾選 `transfer_busy_pbx_confirmed`（已與交換機端確認）。該分頁本來
+    就只在 Original／SuperPro 顯示，所以 SuperLite 不會出現，不需另外判斷。
+  - 存檔：`callSettings` 有變動才 upsert，且只帶這四個欄位（merge-duplicates 只更新有帶的欄位，不會
+    蓋掉 `welcome`）；`lastSynced` 的 `callSettings` 取自 DB 真實值（沒有友善預設列）。
+  - Excel 匯出多一張 `Call Settings` sheet。
+  - 還原點 tag：`before-call-settings-2026-10-27`。
+
 ## 尚未完成的事（Jim 之後要做的）
 
 1. ~~在本機建立這個 repo~~ 已完成：`git init` + GitHub repo `aiellojim/ACA-basic-settings` + push。
