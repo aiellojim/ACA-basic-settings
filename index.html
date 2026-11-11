@@ -383,7 +383,7 @@ const UI_STRINGS = {
   calllog_title:{ en:'Call Record Recipients', zh:'全部通話記錄收件人', ja:'全通話記録の送信先' },
   calllog_note:{ en:'Records of ALL calls handled for this organization (transferred or not) are sent to the addresses below. One address per row.', zh:'此組織所有通話的記錄（不論是否轉接）都會寄到以下信箱，一列填一個信箱。', ja:'この組織で処理されたすべての通話記録（転送の有無を問わず）が、以下のアドレスに送信されます。1行につき1アドレスを入力してください。' },
   calllog_dup_note:{ en:'This is separate from the Transfer Record Email set under Transfer Departments / Scenarios, which only covers calls transferred to that department. If the same address is set in both places, it receives two emails for those transferred calls.', zh:'此欄位與「轉接部門／轉接情境」的轉接通話記錄 Email 是兩件事（後者只涵蓋轉接到該部門的通話）。若同一個信箱兩邊都填，該部門的轉接通話會收到兩封信。', ja:'「転送部署／転送シナリオ」の転送通話記録メール（その部署に転送された通話のみ対象）とは別の設定です。同じアドレスを両方に設定すると、該当する転送通話について2通届きます。' },
-  col_calllog_email:{ en:'Email', zh:'Email', ja:'メールアドレス' },
+  col_calllog_email:{ en:'Email', zh:'電子郵件', ja:'メールアドレス' },
   add_calllog_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
   intcall_title:{ en:'Internal Call Device', zh:'內線接聽設備', ja:'内線応答機器' },
   intcall_q:{ en:'Does the device that answers internal calls (a phone or other hardware) support speakerphone (hands-free)?', zh:'接聽內線電話的設備（話機或其他硬體）是否支援擴音（免持通話）？', ja:'内線通話に応答する機器（電話機またはその他のハードウェア）は、スピーカーフォン（ハンズフリー）に対応していますか？' },
@@ -646,11 +646,8 @@ function renderCallLog(){
     inp.oninput = ()=>{ state.callLogEmails[ri].email = inp.value; scheduleAutosave(); };
   });
   wrap.querySelectorAll('.rm').forEach(b=>{
-    b.onclick = ()=>{
-      showGenericConfirm(t('delete_row_confirm'), ()=>{
-        state.callLogEmails.splice(+b.dataset.ri,1); renderCallLog(); scheduleAutosave();
-      });
-    };
+    // 比照 KMS 使用者名單：按下去直接刪除，不跳二次確認（Jim 2026-11-11）。
+    b.onclick = ()=>{ state.callLogEmails.splice(+b.dataset.ri,1); renderCallLog(); scheduleAutosave(); };
   });
 }
 function renderBusyCard(){
