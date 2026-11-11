@@ -150,6 +150,15 @@
           </div>
           <textarea id="welcomeTextarea" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--ava-border);border-radius:8px;padding:10px;font-size:var(--fs);font-family:inherit;"></textarea>
         </div>
+        <!-- 全部通話記錄收件人（2026-11-11）：整個組織層級、所有方案都顯示（SuperLite 沒有轉接分頁，所以放這裡）。
+             資料存 aca_welcome_messages.call_log_emails（text[]），僅供記錄，後端不讀取；跟轉接部門／情境的通話記錄 Email 是兩件事。 -->
+        <div class="card" id="cardCallLog">
+          <h3 id="tCallLogCardTitle">Call Record Recipients</h3>
+          <!-- 資料存 aca_welcome_messages.call_log_emails (text[])，不是獨立資料表 -->
+          <div class="note" id="tCallLogNote"></div>
+          <div class="note" id="tCallLogDupNote" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;"></div>
+          <div id="tbl-calllog"></div>
+        </div>
         <!-- 內線接聽設備（2026-10-27）：只有 projects.aca_call_scope 為 internal / both 才顯示，見 showInternalCall() -->
         <div class="card" id="cardInternalCall" style="display:none;">
           <h3 id="tIntCallCardTitle">Internal Call Device</h3>
@@ -266,6 +275,8 @@ function defaultState(){
     // 2026-10-27：存在 aca_welcome_messages 同一列（不新增資料表）。speakerphone 存代碼 supported / unsupported / tbd，
     // 空字串 = 尚未回答。預設值就是資料庫真實現況（沒有「友善預設列」），所以可以安全進 lastSynced 快照。
     callSettings: { speakerphone:'', speakerphoneNote:'', busyHandling:'', busyPbxConfirmed:false },
+    // 2026-11-11：全部通話記錄收件人，一列一個信箱，存 aca_welcome_messages.call_log_emails (text[])。
+    callLogEmails: [],
     unlocked: { faq:false },
   };
 }
@@ -323,21 +334,22 @@ function snapshot(o){ return JSON.parse(JSON.stringify(o)); }
 // textarea is edited, or a real saved value loads, this flips to false and the text stops
 // following language switches. "Restore Default" flips it back to true.
 let welcomeIsDefault = true;
-let activePanel = 'departments';
+// 2026-11-11：「通用設定」(welcome) 移到側邊欄最前面，且是三種方案都有的分頁，所以預設落在這裡。
+let activePanel = 'welcome';
 let isHydrating = false;
 
 const UI_STRINGS = {
   nav_group_label:{ en:'Form Sections', zh:'表單分頁', ja:'フォーム項目' },
   nav_departments:{ en:'Transfer Departments', zh:'轉接部門設定', ja:'転送部署設定' },
   nav_scenarios:{ en:'Transfer Scenarios', zh:'轉接情境設定', ja:'転送シナリオ設定' },
-  nav_welcome:{ en:'Call Answering', zh:'接聽設定', ja:'着信応対設定' },
+  nav_welcome:{ en:'General Settings', zh:'通用設定', ja:'共通設定' },
   nav_kms:{ en:'KMS Permissions', zh:'KMS 權限設定', ja:'KMS権限設定' },
   dept_title:{ en:'Transfer Departments', zh:'指定轉接部門', ja:'転送部署の指定' },
-  dept_desc:{ en:"Define each department's extension and call-log notification email for this organization. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab.", zh:'定義此組織各部門的分機與通話記錄 Email，填寫後「轉接情境設定」分頁的對應欄位可直接下拉選取。', ja:'この組織の各部署の内線と通話記録の通知先メールを設定します。入力すると、「転送シナリオ設定」タブの該当項目でドロップダウンから選択できます。' },
+  dept_desc:{ en:"Define each department's extension and the email that receives the records of calls transferred to it. Filled-in departments appear as a dropdown in the corresponding field on the Transfer Scenarios tab. (To receive records of ALL calls, use General Settings.)", zh:'定義此組織各部門的分機，以及接收「轉接到該部門」通話記錄的 Email，填寫後「轉接情境設定」分頁的對應欄位可直接下拉選取。（要接收全部通話記錄請至「通用設定」。）', ja:'この組織の各部署の内線と、その部署に転送された通話の記録を受け取るメールを設定します。入力すると、「転送シナリオ設定」タブの該当項目でドロップダウンから選択できます。（全通話記録の受信は「共通設定」で設定してください。）' },
   dept_card_title:{ en:'Departments', zh:'部門', ja:'部署' },
   col_dept_name:{ en:'Department Name', zh:'部門名稱', ja:'部署名' },
   col_ext:{ en:'Extension', zh:'分機', ja:'内線' },
-  col_notify_email:{ en:'Notification Email', zh:'發送通話記錄 Email', ja:'通知先メール' },
+  col_notify_email:{ en:'Transfer Record Email', zh:'轉接通話記錄 Email', ja:'転送通話記録メール' },
   placeholder_multi_email:{ en:'Multiple emails separated by ;', zh:'多筆 Email 請用半形分號 (;) 分隔', ja:'複数の場合はセミコロン(;)で区切ってください' },
   add_dept_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
   scen_title:{ en:'Transfer Scenarios / Extensions', zh:'轉接場景 / 分機設定', ja:'転送シナリオ / 内線設定' },
@@ -346,7 +358,7 @@ const UI_STRINGS = {
   col_scenario:{ en:'Scenario', zh:'場景', ja:'シナリオ' },
   col_handling:{ en:'Handling', zh:'處理方式', ja:'処理方法' },
   col_department:{ en:'Department', zh:'部門', ja:'部署' },
-  col_email:{ en:'Email', zh:'Email', ja:'メール' },
+  col_email:{ en:'Transfer Record Email', zh:'轉接通話記錄 Email', ja:'転送通話記録メール' },
   add_scen_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
   welcome_title:{ en:'Welcome Message', zh:'歡迎詞', ja:'ウェルカムメッセージ' },
   welcome_desc:{ en:"Shown as the AI agent's opening greeting for this organization.", zh:'作為 AI 客服接聽時的開場歡迎詞。', ja:'AIエージェントの応対開始時の挨拶として表示されます。' },
@@ -366,8 +378,13 @@ const UI_STRINGS = {
   nav_faq:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
   faq_title:{ en:'Knowledge Base FAQ', zh:'知識庫 FAQ', ja:'ナレッジベースFAQ' },
   faq_desc:{ en:"Documents and links related to this organization's knowledge base FAQ.", zh:'此組織知識庫 FAQ 相關的文件與連結。', ja:'この組織のナレッジベースFAQに関する資料およびリンクです。' },
-  callans_title:{ en:'Call Answering', zh:'接聽設定', ja:'着信応対設定' },
-  callans_desc:{ en:"Set the opening greeting the AI agent uses when answering, and the conditions of the device that answers internal calls.", zh:'設定 AI 客服接聽時的開場歡迎詞，以及內線接聽設備的條件。', ja:'AIエージェントが応答する際の冒頭の挨拶と、内線に応答する機器の条件を設定します。' },
+  callans_title:{ en:'General Settings', zh:'通用設定', ja:'共通設定' },
+  callans_desc:{ en:"Settings that apply to the whole organization: the opening greeting, who receives every call record, and the conditions of the device that answers internal calls.", zh:'適用於整個組織的設定：開場歡迎詞、全部通話記錄的收件人，以及內線接聽設備的條件。', ja:'組織全体に適用される設定です：冒頭の挨拶、全通話記録の送信先、内線に応答する機器の条件。' },
+  calllog_title:{ en:'Call Record Recipients', zh:'全部通話記錄收件人', ja:'全通話記録の送信先' },
+  calllog_note:{ en:'Records of ALL calls handled for this organization (transferred or not) are sent to the addresses below. One address per row.', zh:'此組織所有通話的記錄（不論是否轉接）都會寄到以下信箱，一列填一個信箱。', ja:'この組織で処理されたすべての通話記録（転送の有無を問わず）が、以下のアドレスに送信されます。1行につき1アドレスを入力してください。' },
+  calllog_dup_note:{ en:'This is separate from the Transfer Record Email set under Transfer Departments / Scenarios, which only covers calls transferred to that department. If the same address is set in both places, it receives two emails for those transferred calls.', zh:'此欄位與「轉接部門／轉接情境」的轉接通話記錄 Email 是兩件事（後者只涵蓋轉接到該部門的通話）。若同一個信箱兩邊都填，該部門的轉接通話會收到兩封信。', ja:'「転送部署／転送シナリオ」の転送通話記録メール（その部署に転送された通話のみ対象）とは別の設定です。同じアドレスを両方に設定すると、該当する転送通話について2通届きます。' },
+  col_calllog_email:{ en:'Email', zh:'Email', ja:'メールアドレス' },
+  add_calllog_btn:{ en:'Add Row', zh:'新增列', ja:'行を追加' },
   intcall_title:{ en:'Internal Call Device', zh:'內線接聽設備', ja:'内線応答機器' },
   intcall_q:{ en:'Does the device that answers internal calls (a phone or other hardware) support speakerphone (hands-free)?', zh:'接聽內線電話的設備（話機或其他硬體）是否支援擴音（免持通話）？', ja:'内線通話に応答する機器（電話機またはその他のハードウェア）は、スピーカーフォン（ハンズフリー）に対応していますか？' },
   intcall_yes:{ en:'Supported', zh:'支援', ja:'対応している' },
@@ -600,6 +617,41 @@ function renderWelcome(){
   document.getElementById('cardInternalCall').style.display = showInternalCall() ? '' : 'none';
   document.querySelectorAll('input[name=intSpk]').forEach(r=>{ r.checked = (r.value === state.callSettings.speakerphone); });
   document.getElementById('intSpkNote').value = state.callSettings.speakerphoneNote || '';
+  renderCallLog();
+}
+// 全部通話記錄收件人（2026-11-11）：表格樣式比照 KMS 使用者名單（一列一個信箱、下方「新增列」按鈕），
+// 不用單欄分號分隔。沒有編輯鎖，所有人可編輯。打字時不整表重繪（避免輸入中失焦）。
+function renderCallLog(){
+  document.getElementById('tCallLogCardTitle').textContent = t('calllog_title');
+  document.getElementById('tCallLogNote').textContent = t('calllog_note');
+  document.getElementById('tCallLogDupNote').textContent = t('calllog_dup_note');
+  const rows = state.callLogEmails.map((r,i) => `
+    <tr data-ri="${i}">
+      <td><input type="text" data-k="email" inputmode="email" autocomplete="off" placeholder="name@example.com" value="${escapeAttr(r.email)}"></td>
+      <td class="rm-cell"><button type="button" class="rm" data-ri="${i}" title="remove">${RM_ICON_SVG}</button></td>
+    </tr>`).join('');
+  const wrap = document.getElementById('tbl-calllog');
+  wrap.innerHTML = `<table class="rep"><thead><tr>
+      <th>${t('col_calllog_email')}</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table>` +
+    `<button type="button" class="btn small addrow" id="calllog-add-btn"><span class="addrow-icon">+</span><span>${t('add_calllog_btn')}</span></button>`;
+  wrap.querySelector('#calllog-add-btn').onclick = ()=>{
+    state.callLogEmails.push({_id:uid(), email:''});
+    renderCallLog(); scheduleAutosave();
+    const inputs = wrap.querySelectorAll('input[data-k=email]');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  };
+  wrap.querySelectorAll('input[data-k=email]').forEach(inp=>{
+    const ri = +inp.closest('tr').dataset.ri;
+    inp.oninput = ()=>{ state.callLogEmails[ri].email = inp.value; scheduleAutosave(); };
+  });
+  wrap.querySelectorAll('.rm').forEach(b=>{
+    b.onclick = ()=>{
+      showGenericConfirm(t('delete_row_confirm'), ()=>{
+        state.callLogEmails.splice(+b.dataset.ri,1); renderCallLog(); scheduleAutosave();
+      });
+    };
+  });
 }
 function renderBusyCard(){
   document.getElementById('busyHandling').value = state.callSettings.busyHandling || '';
@@ -729,6 +781,9 @@ document.getElementById('exportExcelBtn').onclick = function(){
     'PBX Handling When Transfer Destination Is Busy': cs.busyHandling,
     'Confirmed With PBX Side': cs.busyPbxConfirmed ? 'Yes' : 'No',
   }]), 'Call Settings');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.callLogEmails.filter(r=>String(r.email||'').trim()).map(r=>({
+    'All Call Record Email':String(r.email).trim(),
+  }))), 'All Call Record Emails');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(state.kmsUsers.map(r=>({
     Email:r.email, UserID:r.username, 'Permission Level':r.kmsLevel,
   }))), 'KMS Users');
@@ -737,10 +792,11 @@ document.getElementById('exportExcelBtn').onclick = function(){
 };
 
 /* ---------------- Sidebar / panel navigation ---------------- */
+// 2026-11-11：welcome（通用設定）移到最前面——它是所有方案都有的分頁，內容也都是整個組織層級的設定。
 const NAV_ITEMS = [
+  { id:'welcome', labelKey:'nav_welcome' },
   { id:'departments', labelKey:'nav_departments' },
   { id:'scenarios', labelKey:'nav_scenarios' },
-  { id:'welcome', labelKey:'nav_welcome' },
   { id:'kms', labelKey:'nav_kms' },
   { id:'faq', labelKey:'nav_faq' },
 ];
@@ -903,6 +959,13 @@ async function saveToSupabase(){
       transfer_busy_handling:c.busyHandling, transfer_busy_pbx_confirmed:!!c.busyPbxConfirmed,
     }, {onConflict:'project_id'}).throwOnError());
   }
+  // 2026-11-11：全部通話記錄收件人存在 aca_welcome_messages.call_log_emails（text[]，不新增資料表）。
+  // 畫面是一列一個信箱，但存檔時整個陣列一起寫；空白列不寫進去（可以先按「新增列」再慢慢填）。
+  // 只比對/寫入非空白、去頭尾空白後的信箱清單，所以光是多按一列空白列不會觸發存檔。
+  const callLogList = s=>(s.callLogEmails||[]).map(r=>String(r.email||'').trim()).filter(Boolean);
+  if(JSON.stringify(callLogList(prev)) !== JSON.stringify(callLogList(cur))){
+    ops.push(sb.from('aca_welcome_messages').upsert({project_id:PROJECT_ID, call_log_emails:callLogList(cur)}, {onConflict:'project_id'}).throwOnError());
+  }
   if(!avaOwnsKms()){
     ops.push(...diffRepeater(prev.kmsUsers, cur.kmsUsers, 'web_portal_users', r=>({project_id:PROJECT_ID, email:r.email, username:r.username, kms_level:r.kmsLevel, portal_level:r.portalLevel||'Level-1', is_admin:!!r.isAdmin})));
   }
@@ -1045,7 +1108,11 @@ async function loadFromSupabase(){
   const dbFaq = faqRes.data || [];
   state.faqDocuments = dbFaq.map(r=>({ _id:r.id, name:r.name||'', url:r.url||'' }));
 
+  state.callLogEmails = (Array.isArray(wRow.call_log_emails) ? wRow.call_log_emails : []).map(email=>({ _id:uid(), email:email||'' }));
+
   lastSynced = snapshot(state);
+  // 沒有任何收件人時先給一列空白輸入框（拍完快照後才套用；空白列不會寫進資料庫，見 saveToSupabase）。
+  if(!state.callLogEmails.length) state.callLogEmails = [{_id:uid(), email:''}];
   // 2026-09-15 bug fix（AVA UI settings 實測撞到同一個坑，見 aiello-forms-spec.md 第 4 節）：範例空白列
   // 只能在拍完 lastSynced 快照*之後*才套用進 state，不能在快照之前——這筆純前端產生、資料庫裡不存在的
   // 列如果在快照之前就塞進 state，會被 diffRepeater 永遠誤判成「已經存過」，之後編輯它送出的其實是一筆
@@ -1055,10 +1122,10 @@ async function loadFromSupabase(){
   // PRODUCTS and ACA_PLAN are only known after this load resolves, so showKms()/planVisibleTabIds()
   // may flip a tab's visibility compared to the pre-load render (not just KMS anymore, now that the
   // plan can also hide 'scenarios' or 'kms', or show 'faq') - refresh the sidebar now, and fall back
-  // to 'departments' (visible under every plan) if activePanel is no longer in the visible set
-  // (shouldn't normally happen since activePanel starts on 'departments', but guards against a
+  // to 'welcome' (通用設定 — visible under every plan) if activePanel is no longer in the visible set
+  // (shouldn't normally happen since activePanel starts on 'welcome', but guards against a
   // stale deep-link landing straight on a tab this plan/product combo doesn't show).
-  if(!visibleNavItems().some(item=>item.id===activePanel)) activePanel = 'departments';
+  if(!visibleNavItems().some(item=>item.id===activePanel)) activePanel = 'welcome';
   renderSidebar();
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   const target = document.getElementById('panel-'+activePanel);
@@ -1085,7 +1152,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   };
   renderSidebar();
   applyStaticText();
-  switchPanel('departments');
+  switchPanel('welcome');
   loadFromSupabase();
 });
 </script>

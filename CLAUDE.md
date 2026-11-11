@@ -129,6 +129,21 @@
   - Excel 匯出多一張 `Call Settings` sheet。
   - 還原點 tag：`before-call-settings-2026-10-27`。
 
+- **2026-11-11：分頁改名「通用設定」、移到側邊欄最前面，新增「全部通話記錄收件人」卡片**。
+  - 分頁代碼仍是 `welcome`，顯示名稱改為「通用設定／General Settings／共通設定」（`nav_welcome`、
+    `callans_title`；上一條的「接聽設定」名稱作廢）。`NAV_ITEMS` 把 `welcome` 排第一，預設落地分頁與
+    `loadFromSupabase()` 的 fallback 都改成 `welcome`（三種方案都有這個分頁）。
+  - 新卡片 `cardCallLog`（歡迎詞卡片下方、內線接聽設備上方，**所有方案都顯示**，因為 SuperLite 沒有轉接
+    部門／情境分頁）：整個組織的「全部通話記錄」收件人，**跟轉接部門／情境的通話記錄 Email 是兩件事**
+    （後者只涵蓋轉接到該部門的通話）。畫面是表格＋下方「新增列」按鈕（比照 KMS 使用者名單），一列一個
+    信箱，不用分號分隔；刪除列有確認視窗。卡片上有橘色提示：同一個信箱兩邊都填會收到兩封。
+  - **僅供記錄，後端不讀取**（Jim 2026-11-11 確認）。存在 `aca_welcome_messages.call_log_emails`
+    （`text[]`，預設 `{}`），**不新增資料表**（沿用上一條的原則）；存檔時整個陣列一起 upsert，空白列
+    不寫入、頭尾空白會 trim，所以多按一列空白列不會觸發存檔。沒有資料時畫面先給一列空白輸入框
+    （拍完 `lastSynced` 快照之後才套用）。
+  - 順手把轉接部門／轉接情境的欄位標題改成「轉接通話記錄 Email」（原「發送通話記錄 Email」／「Email」），
+    `dept_desc` 補一句說明；Excel 匯出多一張 `All Call Record Emails` sheet（略過空白列）。
+
 ## 尚未完成的事（Jim 之後要做的）
 
 1. ~~在本機建立這個 repo~~ 已完成：`git init` + GitHub repo `aiellojim/ACA-basic-settings` + push。
